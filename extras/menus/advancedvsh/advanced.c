@@ -1,5 +1,6 @@
 #include "common.h"
 #include <psputility.h>
+#include <time.h>
 
 extern int pwidth;
 extern char umd_path[72];
@@ -11,10 +12,12 @@ extern char umdvideo_path[256];
 extern xyPoint[];
 extern xyPoint2[];
 
+extern ARKConfig* ark_config;
+extern int cur_battery;
+extern t_conf config;
+extern u32 swap_xo;
 
-int is_pandora = 0;
-
-#define SUBMENU_MAX 13
+#define SUBMENU_MAX 15
 
 enum {
 	SUBMENU_USB_DEVICE,
@@ -25,6 +28,8 @@ enum {
 	SUBMENU_BG_COLORS,
 	SUBMENU_CONVERT_BATTERY,
 	SUBMENU_SWAP_XO_BUTTONS,
+	SUBMENU_REGION_MODE,
+	SUBMENU_UMD_REGION_MODE,
 	SUBMENU_IMPORT_CLASSIC_PLUGINS,
 	SUBMENU_ACTIVATE_FLASH_WMA,
 	SUBMENU_DELETE_HIBERNATION,
@@ -32,7 +37,7 @@ enum {
 	SUBMENU_GO_BACK,
 };
 
-extern int item_fcolor[SUBMENU_MAX];
+int item_fcolor[SUBMENU_MAX];
 const char *subitem_str[SUBMENU_MAX];
 
 static int submenu_sel = SUBMENU_USB_DEVICE;
@@ -77,144 +82,146 @@ int submenu_draw(void)
  
 	for(submax_menu=0;submax_menu<SUBMENU_MAX;submax_menu++) {
 		msg = g_messages[MSG_USB_DEVICE + submax_menu];
-		switch(cnf.vsh_bg_colors) {
+		switch(config.vsh_bg_color) {
+						// Random
+						case 0:
 						// Red
-						case 0: 
+						case 1: 
 							bc = (submax_menu==submenu_sel) ? 0xff8080 : 0x000000ff;
 							blit_set_color(fc,bc);
 							break;
 						// Light Red
-						case 1: 
+						case 2: 
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa00000ff;
 							blit_set_color(fc,bc);
 							break;
 						// Orange
-						case 2: 
+						case 3: 
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x0000a5ff;
 							blit_set_color(fc,bc);
 							break;
 						// Light Orange
-						case 3: 
+						case 4: 
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa000a5ff;
 							blit_set_color(fc,bc);
 							break;
 						// Yellow
-						case 4: 
+						case 5: 
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x0000e6e6;
 							blit_set_color(fc,bc);
 							break;
 						// Light Yellow
-						case 5: 
+						case 6: 
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa000e6e6;
 							blit_set_color(fc,bc);
 							break;
 						// Green
-						case 6:
+						case 7:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x0000ff00;
 							blit_set_color(fc,bc);
 							break;
 						// Light Green
-						case 7:
+						case 8:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa000b300;
 							blit_set_color(fc,bc);
 							break;
 						// Blue
-						case 8:
+						case 9:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00ff0000;
 							blit_set_color(fc,bc);
 							break;
 						// Light Blue
-						case 9:
+						case 10:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0ff0000;
 							blit_set_color(fc,bc);
 							break;
 						// Indigo
-						case 10:
+						case 11:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x0082004b;
 							blit_set_color(fc,bc);
 							break;
 						// Light Indigo
-						case 11:
+						case 12:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa082004b;
 							blit_set_color(fc,bc);
 							break;
 						// Violet
-						case 12:
+						case 13:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00ee82ee;
 							blit_set_color(fc,bc);
 							break;
 						// Light Violet
-						case 13:
+						case 14:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0ee82ee;
 							blit_set_color(fc,bc);
 							break;
 						// Pink 
-						case 14:
+						case 15:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00cbc0ff;
 							blit_set_color(fc,bc);
 							break;
 						// Light Pink 
-						case 15:
+						case 16:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0cbc0ff;
 							blit_set_color(fc,bc);
 							break;
 						// Purple 
-						case 16:
+						case 17:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00993366;
 							blit_set_color(fc,bc);
 							break;
 						// Light Purple 
-						case 17:
+						case 18:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0993366;
 							blit_set_color(fc,bc);
 							break;
 						// Teal 
-						case 18:
+						case 19:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00808000;
 							blit_set_color(fc,bc);
 							break;
 						// Light Teal 
-						case 19:
+						case 20:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0808000;
 							blit_set_color(fc,bc);
 							break;
 						// Aqua 
-						case 20:
+						case 21:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00cccc00;
 							blit_set_color(fc,bc);
 							break;
 						// Light Aqua 
-						case 21:
+						case 22:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0cccc00;
 							blit_set_color(fc,bc);
 							break;
 						// Grey 
-						case 22:
+						case 23:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00737373;
 							blit_set_color(fc,bc);
 							break;
 						// Light Grey 
-						case 23:
+						case 24:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0737373;
 							blit_set_color(fc,bc);
 							break;
 						// Black 
-						case 24:
+						case 25:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00000000;
 							blit_set_color(fc,bc);
 							break;
 						// Light Black 
-						case 25:
+						case 26:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xa0000000;
 							blit_set_color(fc,bc);
 							break;
 						// White  
-						case 26:
+						case 27:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0x00ffffff;
 							blit_set_color(fc,bc);
 							break;
 						// Light White  
-						case 27:
+						case 28:
 							bc = (submax_menu==submenu_sel) ? 0x0000ff : 0xafffffff;
 							blit_set_color(fc,bc);
 							break;
@@ -223,15 +230,12 @@ int submenu_draw(void)
 							blit_set_color(fc,bc);
 					}
 
-					switch(cnf.vsh_fg_colors) {
-						// Red
-						case 26:
-							fc = (submax_menu==submenu_sel) ? 0xffffff : 0x000000ff;
-							blit_set_color(fc,bc);
-							break;
-						// Light Red
-						case 1: 
-							fc = (submax_menu==submenu_sel) ? 0xffffff : 0xa00000ff;
+					switch(config.vsh_fg_color) {
+						// Random
+						case 0:
+						// White  
+						case 1:
+							fc = (submax_menu==submenu_sel) ? 0xffffff : 0x00ffffff;
 							blit_set_color(fc,bc);
 							break;
 						// Orange
@@ -354,13 +358,18 @@ int submenu_draw(void)
 							fc = (submax_menu==submenu_sel) ? 0xffffff : 0xa0000000;
 							blit_set_color(fc,bc);
 							break;
-						// White  
-						case 0:
-							fc = (submax_menu==submenu_sel) ? 0xffffff : 0x00ffffff;
+						// Light Red
+						case 26: 
+							fc = (submax_menu==submenu_sel) ? 0xffffff : 0xa00000ff;
+							blit_set_color(fc,bc);
+							break;
+						// Red
+						case 27:
+							fc = (submax_menu==submenu_sel) ? 0xffffff : 0x000000ff;
 							blit_set_color(fc,bc);
 							break;
 						// Light White  
-						case 27:
+						case 28:
 							fc = (submax_menu==submenu_sel) ? 0xffffff : 0xafffffff;
 							blit_set_color(fc,bc);
 							break;
@@ -399,15 +408,10 @@ int submenu_draw(void)
 			subcur_menu = submax_menu;
 			blit_string(xPointer, (pointer[5] + subcur_menu)*8, msg);
 			msg = subitem_str[submax_menu];
-			if (submax_menu == SUBMENU_CONVERT_BATTERY){
-				if (is_pandora){
-					if (is_pandora < 0) msg = "Unsupported";
-					else msg = "Pandora -> Normal";
-				}
-				else{
-					msg = "Normal -> Pandora";
-				}
-				blit_string(xPointer+0x80, (pointer[5] + subcur_menu)*8, msg);
+
+			if (submax_menu == SUBMENU_UMD_REGION_MODE) {
+				if(psp_model == PSP_GO || IS_VITA_ADR(ark_config)) msg = "Unsupported";
+				blit_string( (pointer[6] * 8) + 128, (pointer[5] + subcur_menu)*8, msg);
 			}
 			else if(msg) {
 				blit_string( (pointer[6] * 8) + 128, (pointer[5] + subcur_menu)*8, msg);
@@ -441,13 +445,18 @@ int submenu_setup(void)
 	if((cnf.usbdevice>0) && (cnf.usbdevice<5)) {
 		scePaf_sprintf(device_buf, "%s %d", g_messages[MSG_FLASH], cnf.usbdevice-1);
 		bridge = device_buf;
-	} else {
+	} else if (IS_VITA_ADR(ark_config)) {
+		scePaf_sprintf(device_buf, "%s", g_messages[MSG_USE_ADRENALINE_SETTINGS]);
+		bridge = device_buf;
+	}else {
 		const char *device;
 
 		if(cnf.usbdevice==5)
 			device= g_messages[MSG_UMD_DISC];
+		else if(psp_model == PSP_GO)
+			device = g_messages[MSG_INTERNAL_STORAGE];
 		else
-			device= g_messages[MSG_MEMORY_STICK];
+			device = g_messages[MSG_MEMORY_STICK];
 
 		bridge = device;
 	}
@@ -460,9 +469,13 @@ int submenu_setup(void)
 		umdvideo_disp++;
 	}
 
-	subitem_str[SUBMENU_UMD_VIDEO] = umdvideo_disp;
+	if(IS_VITA_ADR(ark_config))
+		subitem_str[SUBMENU_UMD_VIDEO] = g_messages[MSG_UNSUPPORTED];
+	else
+		subitem_str[SUBMENU_UMD_VIDEO] = umdvideo_disp;
 	subitem_str[SUBMENU_USB_DEVICE] = bridge;
 
+/*
 	switch(cnf.umdmode) {
 		case MODE_NP9660:
 			subitem_str[SUBMENU_UMD_MODE] = g_messages[MSG_NP9660];
@@ -470,9 +483,21 @@ int submenu_setup(void)
 		case MODE_INFERNO:
 			subitem_str[SUBMENU_UMD_MODE] = g_messages[MSG_INFERNO];
 			break;
-		default:
-			subitem_str[SUBMENU_UMD_MODE] = g_messages[MSG_INFERNO];
 	}
+*/
+	if(cnf.umdmode == 3) {
+		subitem_str[SUBMENU_UMD_MODE] = g_messages[MSG_INFERNO];
+	} else if(cnf.umdmode<2) {
+		cnf.umdmode = 3;
+	} else if(cnf.umdmode>3) {
+		cnf.umdmode = 2;
+	} else {
+		subitem_str[SUBMENU_UMD_MODE] = g_messages[MSG_NP9660];
+	}
+
+
+
+
 
 	switch(cnf.usbdevice_rdonly) {
 		case 0:
@@ -481,11 +506,14 @@ int submenu_setup(void)
 		case 1:
 			subitem_str[SUBMENU_USB_READONLY] = g_messages[MSG_ENABLE];
 			break;
+		case 2:
+			subitem_str[SUBMENU_USB_READONLY] = g_messages[MSG_UNSUPPORTED];
+			break;
 		default:
 			subitem_str[SUBMENU_USB_READONLY] = g_messages[MSG_ENABLE];
 	}
 
-	switch(cnf.swap_xo) {
+	switch(swap_xo) {
 		case XO_CURRENT_O_PRIMARY:
 			subitem_str[SUBMENU_SWAP_XO_BUTTONS] = g_messages[MSG_O_PRIM];
 			break;
@@ -495,8 +523,83 @@ int submenu_setup(void)
 		default:
 			subitem_str[SUBMENU_SWAP_XO_BUTTONS] = g_messages[MSG_X_PRIM]; // should never happen?
 	}
+
+	switch(cur_battery) {
+		case NORMAL_TO_PANDORA:
+			subitem_str[SUBMENU_CONVERT_BATTERY] = g_messages[MSG_NORMAL_TO_PANDORA];
+			break;
+		case PANDORA_TO_NORMAL:
+			subitem_str[SUBMENU_CONVERT_BATTERY] = g_messages[MSG_PANDORA_TO_NORMAL];
+			break;
+		case UNSUPPORTED:
+			subitem_str[SUBMENU_CONVERT_BATTERY] = g_messages[MSG_UNSUPPORTED];
+			break;
+	}
+
+	switch(cnf.vshregion) {
+		case FAKE_REGION_DISABLED:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_DEFAULT];
+			break;
+		case FAKE_REGION_JAPAN:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_JAPAN];
+			break;
+		case FAKE_REGION_AMERICA:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_AMERICA];
+			break;
+		case FAKE_REGION_EUROPE:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_EUROPE];
+			break;
+		case FAKE_REGION_KOREA:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_KOREA];
+			break;
+		case FAKE_REGION_AUSTRALIA:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_AUSTRALIA];
+			break;
+		case FAKE_REGION_HONGKONG:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_HONG_KONG];
+			break;
+		case FAKE_REGION_TAIWAN:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_TAIWAN];
+			break;
+		case FAKE_REGION_RUSSIA:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_RUSSIA];
+			break;
+		case FAKE_REGION_CHINA:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_CHINA];
+			break;
+		case FAKE_REGION_DEBUG_TYPE_I:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_DEBUG_I];
+			break;
+		case FAKE_REGION_DEBUG_TYPE_II:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_DEBUG_II];
+			break;
+		default:
+			subitem_str[SUBMENU_REGION_MODE] = g_messages[MSG_DISABLE];
+	}
+
+	switch(cnf.umdregion) {
+		case UMD_REGION_DEFAULT:
+			subitem_str[SUBMENU_UMD_REGION_MODE] = g_messages[MSG_DEFAULT];
+			break;
+		case UMD_REGION_JAPAN:
+			subitem_str[SUBMENU_UMD_REGION_MODE] = g_messages[MSG_JAPAN];
+			break;
+		case UMD_REGION_AMERICA:
+			subitem_str[SUBMENU_UMD_REGION_MODE] = g_messages[MSG_AMERICA];
+			break;
+		case UMD_REGION_EUROPE:
+			subitem_str[SUBMENU_UMD_REGION_MODE] = g_messages[MSG_EUROPE];
+			break;
+		default:
+			subitem_str[SUBMENU_UMD_REGION_MODE] = g_messages[MSG_DEFAULT];
+			break;
+	}
 	
-	switch(cnf.vsh_fg_colors) {
+
+	switch(config.vsh_fg_color) {
+		case FG_RANDOM:
+			subitem_str[SUBMENU_FG_COLORS] = g_messages[MSG_RANDOM];
+			break;
 		case FG_RED:
 			subitem_str[SUBMENU_FG_COLORS] = g_messages[MSG_RED];
 			break;
@@ -584,7 +687,10 @@ int submenu_setup(void)
 		default:
 			subitem_str[SUBMENU_FG_COLORS] = g_messages[MSG_WHITE];
 	}
-	switch(cnf.vsh_bg_colors) {
+	switch(config.vsh_bg_color) {
+		case BG_RANDOM:
+			subitem_str[SUBMENU_BG_COLORS] = g_messages[MSG_RANDOM];
+			break;
 		case BG_RED:
 			subitem_str[SUBMENU_BG_COLORS] = g_messages[MSG_RED];
 			break;
@@ -684,7 +790,6 @@ int submenu_ctrl(u32 button_on)
 	if( (button_on & PSP_CTRL_SELECT) ||
 		(button_on & PSP_CTRL_HOME)) {
 		submenu_sel = SUBMENU_GO_BACK;
-		// TODO: Probably needs to just "return" return 1 will probably actually exit.
 		return 1;
 	}
 
@@ -709,15 +814,18 @@ int submenu_ctrl(u32 button_on)
 
 	switch(submenu_sel) {
 		case SUBMENU_USB_DEVICE:
+			if (IS_VITA_ADR(ark_config)) break;
 			if(direction) change_usb( direction );
 			break;
 		case SUBMENU_USB_READONLY:
+			if (IS_VITA_ADR(ark_config)) break;
 			if (direction) swap_readonly(direction);
 			break;
 		case SUBMENU_UMD_MODE:
 			if(direction) change_umd_mode( direction );
 			break;
 		case SUBMENU_UMD_VIDEO:
+			if (IS_VITA_ADR(ark_config)) break;
 			if(direction) {
 			   	change_umd_mount_idx(direction);
 
@@ -729,7 +837,7 @@ int submenu_ctrl(u32 button_on)
 					if(umdpath != NULL) {
 						strncpy(umdvideo_path, umdpath, sizeof(umdvideo_path));
 						umdvideo_path[sizeof(umdvideo_path)-1] = '\0';
-					} else {
+					}else {
 						goto none;
 					}
 				} else {
@@ -760,6 +868,13 @@ none:
 				return 11; // Activate Flash/WMA flag 
 			}
 			break;
+		case SUBMENU_REGION_MODE:
+			if(direction) change_region ( direction, 13 );
+			break;
+		case SUBMENU_UMD_REGION_MODE:
+			if(psp_model == PSP_GO || IS_VITA_ADR(ark_config)) break;
+			if(direction) change_umd_region ( direction, 3 );
+			break;
 		case SUBMENU_SWAP_XO_BUTTONS:
 			if (direction==0) {
 				return 12; // Swap X/O Buttons flag  
@@ -772,11 +887,11 @@ none:
 			break;
 		case SUBMENU_FG_COLORS:
 			// This will be where I will be adding to set the color
-			if(direction) change_fg_colors(direction);
+			if(direction) change_fg_color(direction);
 			break;
 		case SUBMENU_BG_COLORS:
 			// This will be where I will be adding to set the color
-			if(direction) change_bg_colors(direction);
+			if(direction) change_bg_color(direction);
 			break;
 		case SUBMENU_GO_BACK:
 			if(direction==0) return 1; // finish

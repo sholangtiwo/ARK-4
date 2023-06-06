@@ -18,6 +18,7 @@
 #include <pspsdk.h>
 #include <pspsysmem_kernel.h>
 #include <systemctrl.h>
+#include <systemctrl_se.h>
 #include <systemctrl_private.h>
 #include <globals.h>
 #include "functions.h"
@@ -29,8 +30,8 @@
 
 PSP_MODULE_INFO("ARKCompatLayer", 0x3007, 1, 0);
 
-static ARKConfig _ark_conf;
-ARKConfig* ark_config = &_ark_conf;
+ARKConfig* ark_config = NULL;
+SEConfig* se_config = NULL;
 
 // Previous Module Start Handler
 STMOD_HANDLER previous = NULL;
@@ -47,15 +48,15 @@ void flushCache()
     sceKernelDcacheWritebackInvalidateAll();
 }
 
-static void processArkConfig(ARKConfig* ark_config){
-    sctrlHENGetArkConfig(ark_config);
+static void processArkConfig(){
+    se_config = sctrlSEGetConfig(NULL);
+    ark_config = sctrlHENGetArkConfig(NULL);
     if (ark_config->exec_mode == DEV_UNK){
         ark_config->exec_mode = PS_VITA; // assume running on PS Vita
     }
     if (ark_config->launcher[0] == '\0'){
         strcpy(ark_config->launcher, ARK_MENU);
     }
-    sctrlHENSetArkConfig(ark_config); // notify SystemControl
 }
 
 // Boot Time Entry Point
@@ -66,7 +67,7 @@ int module_start(SceSize args, void * argp)
     sctrlHENSetRebootexOverride(rebootbuffer_vita);
 
     // copy configuration
-    processArkConfig(ark_config);
+    processArkConfig();
     
     // Vita patches
     PROVitaSysPatch();

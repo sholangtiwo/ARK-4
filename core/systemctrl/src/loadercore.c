@@ -183,7 +183,18 @@ static void loadXmbControl(){
         strcpy(path, ark_config->arkpath);
         strcat(path, XMBCTRL_PRX);
         int modid = sceKernelLoadModule(path, 0, NULL);
-        sceKernelStartModule(modid, 0, NULL, NULL, NULL);
+        if (modid < 0) modid = sceKernelLoadModule("flash0:/kd/ark_xmbctrl.prx", 0, NULL); // retry flash0
+        if (modid >= 0) sceKernelStartModule(modid, 0, NULL, NULL, NULL);
+    }
+}
+
+static void checkArkPath(){
+    int res = sceIoDopen(ark_config->arkpath);
+    if (res < 0){
+        strcpy(ark_config->arkpath, "ms0:/SEPLUGINS/");
+    }
+    else{
+        sceIoDclose(res);
     }
 }
 
@@ -209,12 +220,21 @@ int InitKernelStartModule(int modid, SceSize argsize, void * argp, int * modstat
             exitLauncher(); // reboot VSH into custom menu
         }
     }
+
+    // load settings before starting mediasync
+    if (!pluginLoaded && strcmp(mod->modname, "sceMediaSync") == 0)
+    {
+        // Check ARK install path
+        checkArkPath();
+        // load settings
+        loadSettings();
+    }
     
     // start module
-    if(result < 0) result = sceKernelStartModule(modid, argsize, argp, modstatus, opt);
+    if (result < 0) result = sceKernelStartModule(modid, argsize, argp, modstatus, opt);
     
     // MediaSync not yet started... too early to load plugins.
-    if(!pluginLoaded && strcmp(mod->modname, "sceMediaSync") == 0)
+    if (!pluginLoaded && strcmp(mod->modname, "sceMediaSync") == 0)
     {
         // Load XMB Control
         loadXmbControl();

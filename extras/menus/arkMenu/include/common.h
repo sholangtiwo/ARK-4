@@ -72,10 +72,6 @@ enum {
 #define MS0_PATH 0x3A30736D // 'ms0:' as u32
 #define EF0_PATH 0x3A306665 // 'ef0:' as u32
 
-extern "C" {
-    void sctrlHENGetArkConfig(ARKConfig* conf);
-};
-
 namespace common{
 
     extern ARKConfig* getArkConfig();
@@ -96,7 +92,7 @@ namespace common{
     extern bool folderExists(const std::string &path);
     extern long fileSize(const std::string &path);
     extern u64 deviceSize(const std::string path);
-    extern string beautifySize(long size);
+    extern string beautifySize(u64 size);
     extern Image* getImage(int which);
     extern Image* getIcon(int which);
     extern Image* getCheckbox(int which);
@@ -118,7 +114,6 @@ namespace common{
     extern int maxString(string* strings, int n_strings);
     extern std::string getExtension(std::string path);
     extern void launchRecovery();
-    extern bool canInstallGame();
 }
 
 #endif

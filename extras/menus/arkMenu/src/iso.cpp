@@ -209,14 +209,16 @@ void Iso::executeISO(const char* path, bool is_patched){
     memset(&param, 0, sizeof(param));
 
     if (is_patched)
-        param.argp = (char*)"disc0:/PSP_GAME/SYSDIR/EBOOT.OLD";
+        param.argp = (char*)UMD_EBOOT_OLD;
     else
-        param.argp = (char*)"disc0:/PSP_GAME/SYSDIR/EBOOT.BIN";
+        param.argp = (char*)UMD_EBOOT_BIN;
 
     int runlevel = (*(u32*)path == EF0_PATH && common::getConf()->redirect_ms0)? ISO_RUNLEVEL_GO : ISO_RUNLEVEL;
 
+    param.size = sizeof(param);
     param.key = "umdemu";
     param.args = 33;  // lenght of "disc0:/PSP_GAME/SYSDIR/EBOOT.BIN" + 1
+    sctrlSESetDiscType(PSP_UMD_TYPE_GAME);
     sctrlSESetBootConfFileIndex(ISO_DRIVER);
     sctrlSESetUmdFile((char*)path);
     sctrlKernelLoadExecVSHWithApitype(runlevel, path, &param);

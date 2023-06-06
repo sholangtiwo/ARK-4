@@ -12,10 +12,11 @@ EXTRA_TARGETS = EBOOT.PBP
 PSP_EBOOT_TITLE = arkMenu
 PSP_EBOOT_ICON = ICON0.PNG
 PSP_FW_VERSION=660
-#BUILD_PRX = 1
+BUILD_PRX = 1
 
 OBJS = \
 		main.o \
+		imports.o \
 		src/debug.o \
 		src/common.o \
 		src/system_mgr.o \

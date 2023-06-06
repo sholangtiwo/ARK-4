@@ -103,15 +103,18 @@ static void (*ciso_decompressor)(void* src, int src_len, void* dst, int dst_len,
 
 static Iso9660DirectoryRecord g_root_record;
 
-int isoInit(){
-    SceUID memid = sceKernelAllocPartitionMemory(2, "CisoBuffer", PSP_SMEM_High, DAX_BLOCK_SIZE + DAX_COMP_BUF + SECTOR_SIZE + 4*CISO_IDX_MAX_ENTRIES + 64, NULL);
-    if (memid < 0) return memid;
-    u8* buf = sceKernelGetBlockHeadAddr(memid);
-    ciso_dec_buf = PTR_ALIGN_64(buf);
-    ciso_com_buf = ciso_dec_buf + DAX_BLOCK_SIZE;
-    g_sector_buffer = ciso_com_buf + DAX_COMP_BUF;
-    g_CISO_idx_cache = g_sector_buffer + SECTOR_SIZE;
-    return 0;
+static void isoAlloc(){
+    ciso_dec_buf = my_malloc(DAX_BLOCK_SIZE + 64);
+    ciso_com_buf = my_malloc(DAX_COMP_BUF + 64);
+    g_sector_buffer = my_malloc(SECTOR_SIZE);
+    g_CISO_idx_cache = my_malloc(4*CISO_IDX_MAX_ENTRIES);
+}
+
+static void isoFree(){
+    my_free(ciso_dec_buf);
+    my_free(ciso_com_buf);
+    my_free(g_sector_buffer);
+    my_free(g_CISO_idx_cache);
 }
 
 static inline u32 isoPos2LBA(u32 pos)
@@ -232,8 +235,8 @@ static int read_compressed_data(u8* addr, u32 size, u32 offset)
     u32 pos, ret, read_bytes;
     u32 o_offset = offset;
     u32 g_ciso_total_block = uncompressed_size/block_size;
-    u8* com_buf = ciso_com_buf;
-    u8* dec_buf = ciso_dec_buf;
+    u8* com_buf = PTR_ALIGN_64(ciso_com_buf);
+    u8* dec_buf = PTR_ALIGN_64(ciso_dec_buf);
     u8* c_buf = NULL;
     u8* top_addr = addr+size;
     
@@ -499,6 +502,8 @@ int isoOpen(const char *path)
 {
     int ret;
 
+    int k1 = pspSdkSetK1(0);
+
     if (g_isofd >= 0) {
         isoClose();
     }
@@ -570,6 +575,8 @@ int isoOpen(const char *path)
         g_total_sectors = isoPos2LBA((u32)size);
     }
 
+    isoAlloc();
+
     ret = readSector(16, g_sector_buffer);
 
     if (ret != SECTOR_SIZE) {
@@ -594,7 +601,7 @@ error:
     if (g_isofd >= 0) {
         isoClose();
     }
-
+    pspSdkSetK1(k1);
     return ret;
 }
 
@@ -605,37 +612,46 @@ int isoGetTotalSectorSize(void)
 
 void isoClose(void)
 {
+    int k1 = pspSdkSetK1(0);
+    
     sceIoClose(g_isofd);
     g_isofd = -1;
     g_filename = NULL;
 
+    isoFree();
     g_total_sectors = 0;
     ciso_cur_block = -1;
     g_CISO_cur_idx = -1;
+    
+    pspSdkSetK1(k1);
 }
 
 int isoGetFileInfo(char * path, u32 *filesize, u32 *lba)
 {
-    int ret;
+    int ret = 0;
     Iso9660DirectoryRecord rec;
+    int k1 = pspSdkSetK1(0);
 
     ret = findPath(path, &rec);
 
-    if (ret < 0) {
-        return ret;
+    if (ret >= 0) {
+        if (lba){
+           *lba = rec.lsbStart;
+        }
+        if (filesize) {
+            *filesize = rec.lsbDataLength;
+        }
     }
-
-    *lba = rec.lsbStart;
-
-    if (filesize != NULL) {
-        *filesize = rec.lsbDataLength;
-    }
-
-    return 0;
+    
+    pspSdkSetK1(k1);
+    return ret;
 }
 
 int isoRead(void *buffer, u32 lba, int offset, u32 size)
 {
+    int k1 = pspSdkSetK1(0);
     u32 pos = isoLBA2Pos(lba, offset);
-    return read_data(buffer, size, pos);
+    int res = read_data(buffer, size, pos);
+    pspSdkSetK1(k1);
+    return res;
 }

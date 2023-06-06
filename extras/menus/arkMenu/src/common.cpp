@@ -131,12 +131,14 @@ void common::resetConf(){
     config.text_glow = 1;
     config.screensaver = 2;
     config.redirect_ms0 = 0;
+    config.startbtn = 0;
+    config.menusize = 0;
 }
 
 void common::launchRecovery(){
     struct SceKernelLoadExecVSHParam param;
     char cwd[128];
-    string recovery_path = string(getcwd((char*)cwd, sizeof(cwd))) + "/" + "RECOVERY.PBP";
+    string recovery_path = string(ark_config.arkpath) + "RECOVERY.PBP";
     
     memset(&param, 0, sizeof(param));
     
@@ -422,7 +424,7 @@ u64 common::deviceSize(const std::string path){
     return (u64)devsize.freeClusters*(u64)devsize.sectorSize*(u64)devsize.sectorCount;
 }
 
-string common::beautifySize(long size){
+string common::beautifySize(u64 size){
     ostringstream txt;
 
     if (size < 1024)
@@ -469,7 +471,6 @@ MP3* common::getMP3Sound(){
 }
 
 void common::playMenuSound(){
-    //playMP3File(NULL, common::getMP3Sound()->getBuffer(), common::getMP3Sound()->getBufferSize());
     sound_mp3->play();
 }
 
@@ -566,10 +567,4 @@ std::string common::getExtension(std::string path){
     std::string ext = path.substr(path.find_last_of(".") + 1);
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     return ext;
-}
-
-bool common::canInstallGame(){
-    static char* test_dir = "ms0:/PSP/GAME/ARKTEST/";
-    sceIoMkdir(test_dir, 0777);
-    return (sceIoRmdir(test_dir) >= 0);
 }

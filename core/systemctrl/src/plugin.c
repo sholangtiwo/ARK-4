@@ -20,6 +20,7 @@
 #include <pspmodulemgr.h>
 #include <pspiofilemgr.h>
 #include <globals.h>
+#include <systemctrl_se.h>
 #include <systemctrl_private.h>
 #include "plugin.h"
 #include "libs/graphics/graphics.h"
@@ -28,14 +29,17 @@
 #define LINE_TOKEN_DELIMITER ','
 
 extern ARKConfig* ark_config;
+extern SEConfig se_config;
 
 #define MAX_PLUGINS 32
 #define MAX_PLUGIN_PATH 64
 
-static struct{
+typedef struct{
     int count;
     char paths[MAX_PLUGINS][MAX_PLUGIN_PATH];
-} plugins;
+}Plugins;
+
+Plugins* plugins = NULL;
 
 void (*plugin_handler)(const char* path, int modid) = NULL;
 
@@ -44,19 +48,19 @@ int disable_settings = 0;
 int is_plugins_loading = 0;
 
 static addPlugin(char* path){
-    for (int i=0; i<plugins.count; i++){
-        if (strcasecmp(plugins.paths[i], path) == 0)
+    for (int i=0; i<plugins->count; i++){
+        if (stricmp(plugins->paths[i], path) == 0)
             return; // plugin already added
     }
-    if (plugins.count < MAX_PLUGINS)
-        strcpy(plugins.paths[plugins.count++], path);
+    if (plugins->count < MAX_PLUGINS)
+        strcpy(plugins->paths[plugins->count++], path);
 }
 
 static removePlugin(char* path){
-    for (int i=0; i<plugins.count; i++){
-        if (strcasecmp(plugins.paths[i], path) == 0){
-            if (--plugins.count > i){
-                strcpy(plugins.paths[i], plugins.paths[plugins.count]);
+    for (int i=0; i<plugins->count; i++){
+        if (stricmp(plugins->paths[i], path) == 0){
+            if (--plugins->count > i){
+                strcpy(plugins->paths[i], plugins->paths[plugins->count]);
             }
             break;
         }
@@ -66,8 +70,8 @@ static removePlugin(char* path){
 // Load and Start Plugin Module
 static void startPlugins()
 {
-    for (int i=0; i<plugins.count; i++){
-        char* path = plugins.paths[i];
+    for (int i=0; i<plugins->count; i++){
+        char* path = plugins->paths[i];
         // Load Module
         int uid = sceKernelLoadModule(path, 0, NULL);
         // Call handler
@@ -86,18 +90,18 @@ static int matchingRunlevel(char * runlevel)
     // Fetch Apitype
     int apitype = sceKernelInitApitype();
     
-    if (strcasecmp(runlevel, "all") == 0 || strcasecmp(runlevel, "always") == 0) return 1; // always on
-    else if (strcasecmp(runlevel, "vsh") == 0 || strcasecmp(runlevel, "xmb") == 0) // VSH only
+    if (stricmp(runlevel, "all") == 0 || stricmp(runlevel, "always") == 0) return 1; // always on
+    else if (stricmp(runlevel, "vsh") == 0 || stricmp(runlevel, "xmb") == 0) // VSH only
         return (apitype == 0x200 || apitype ==  0x210 || apitype ==  0x220 || apitype == 0x300);
-    else if (strcasecmp(runlevel, "pops") == 0 || strcasecmp(runlevel, "ps1") == 0 || strcasecmp(runlevel, "psx") == 0) // PS1 games only
+    else if (stricmp(runlevel, "pops") == 0 || stricmp(runlevel, "ps1") == 0 || stricmp(runlevel, "psx") == 0) // PS1 games only
         return (apitype == 0x144 || apitype == 0x155);
-    else if (strcasecmp(runlevel, "umd") == 0 || strcasecmp(runlevel, "psp") == 0 || strcasecmp(runlevel, "umdemu") == 0) // Retail games only
+    else if (stricmp(runlevel, "umd") == 0 || stricmp(runlevel, "psp") == 0 || stricmp(runlevel, "umdemu") == 0) // Retail games only
         return (apitype == 0x120 || (apitype >= 0x123 && apitype <= 0x126) || apitype == 0x130 || apitype == 0x160 || (apitype >= 0x110 && apitype <= 0x115));
-    else if (strcasecmp(runlevel, "game") == 0) // retail+homebrew
+    else if (stricmp(runlevel, "game") == 0) // retail+homebrew
         return (apitype == 0x120 || (apitype >= 0x123 && apitype <= 0x126) || apitype == 0x141 || apitype == 0x152 || apitype == 0x130 || apitype == 0x160 || (apitype >= 0x110 && apitype <= 0x115));
-    else if (strcasecmp(runlevel, "homebrew") == 0) // homebrews only
+    else if (stricmp(runlevel, "app") == 0 || stricmp(runlevel, "homebrew") == 0) // homebrews only
         return (apitype == 0x141 || apitype == 0x152);
-    else if (strcasecmp(runlevel, "launcher") == 0){
+    else if (stricmp(runlevel, "launcher") == 0){
         // check if running custom launcher
         static char path[ARK_PATH_SIZE];
         strcpy(path, ark_config->arkpath);
@@ -117,8 +121,8 @@ static int matchingRunlevel(char * runlevel)
 static int booleanOn(char * text)
 {
     // Different Variations of "true"
-    if(strcasecmp(text, "true") == 0 || strcasecmp(text, "on") == 0 ||
-        strcmp(text, "1") == 0 || strcasecmp(text, "enabled") == 0)
+    if(stricmp(text, "true") == 0 || stricmp(text, "on") == 0 ||
+        strcmp(text, "1") == 0 || stricmp(text, "enabled") == 0)
             return 1;
     
     // Default to False
@@ -318,6 +322,91 @@ static void ProcessConfigFile(char* path, void (*enabler)(char*), void (*disable
     }
 }
 
+static void settingsHandler(char* path, u8 enabled){
+    int apitype = sceKernelInitApitype();
+    if (strcasecmp(path, "overclock") == 0){ // set CPU speed to max
+        if (enabled)
+            se_config.clock = 1;
+        else if (se_config.clock == 1) se_config.clock = 0;
+    }
+    else if (strcasecmp(path, "powersave") == 0){ // underclock to save battery
+        if (apitype != 0x144 && apitype != 0x155) // prevent operation in pops
+            if (enabled)
+                se_config.clock = 2;
+            else if (se_config.clock == 2) se_config.clock = 0;
+    }
+    else if (strcasecmp(path, "usbcharge") == 0){ // enable usb charging
+        se_config.usbcharge = enabled;
+    }
+    else if (strcasecmp(path, "highmem") == 0){ // enable high memory
+        if ( (apitype == 0x120 || (apitype >= 0x123 && apitype <= 0x126)) && sceKernelFindModuleByName("sceUmdCache_driver") != NULL){
+            // don't allow high memory in UMD when cache is enabled
+            return;
+        }
+        se_config.force_high_memory = enabled;
+    }
+    else if (strcasecmp(path, "mscache") == 0){
+        se_config.msspeed = enabled; // enable ms cache for speedup
+    }
+    else if (strcasecmp(path, "disablepause") == 0){ // disable pause game feature on psp go
+        if (apitype != 0x144 && apitype != 0x155 && apitype !=  0x210 && apitype !=  0x220) // prevent in pops and vsh
+            se_config.disable_pause = enabled;
+    }
+    else if (strcasecmp(path, "launcher") == 0){ // replace XMB with custom launcher
+        se_config.launcher_mode = enabled;
+    }
+    else if (strcasecmp(path, "oldplugin") == 0){ // redirect ms0 to ef0 on psp go
+        se_config.oldplugin = enabled;
+    }
+    else if (strcasecmp(path, "infernocache") == 0){
+        if (apitype == 0x123 || apitype == 0x125 || (apitype >= 0x112 && apitype <= 0x115)){
+            se_config.iso_cache = enabled;
+        }
+    }
+    else if (strcasecmp(path, "noled") == 0){
+        se_config.noled = enabled;
+    }
+    else if (strcasecmp(path, "skiplogos") == 0){
+        se_config.skiplogos = enabled;
+    }
+    else if (strcasecmp(path, "region_jp") == 0){
+        se_config.umdregion = (enabled)?UMD_REGION_JAPAN:0;
+    }
+    else if (strcasecmp(path, "region_us") == 0){
+        se_config.umdregion = (enabled)?UMD_REGION_AMERICA:0;
+    }
+    else if (strcasecmp(path, "region_eu") == 0){
+        se_config.umdregion = (enabled)?UMD_REGION_EUROPE:0;
+    }
+    else if (strncasecmp(path, "fakeregion_", 11) == 0){
+        int r = atoi(path+11);
+        se_config.vshregion = (enabled)?r:0;
+    }
+    else if (strcasecmp(path, "hidepics") == 0){ // hide PIC0 and PIC1
+        se_config.hidepics = enabled;
+    }
+    else if (strcasecmp(path, "hibblock") == 0){ // block hibernation
+        se_config.hibblock = enabled;
+    }
+    else if (strcasecmp(path, "skiplogos") == 0){ // skip sony logo and gameboot
+        se_config.skiplogos = enabled;
+    }
+    else if (strcasecmp(path, "hidemac") == 0){ // hide mac address
+        se_config.hidemac = enabled;
+    }
+    else if (strcasecmp(path, "hidedlc") == 0){ // hide mac address
+        se_config.hidedlc = enabled;
+    }
+}
+
+static void settingsEnabler(char* path){
+    settingsHandler(path, 1);
+}
+
+static void settingsDisabler(char* path){
+    settingsHandler(path, 0);
+}
+
 static int isRecoveryMode(){
     if (ark_config->recovery) return 1;
     // check if launching recovery menu
@@ -332,6 +421,9 @@ void LoadPlugins(){
     if (disable_plugins || isRecoveryMode())
         return; // don't load plugins in recovery mode
     is_plugins_loading = 1;
+    // allocate resources
+    plugins = oe_malloc(sizeof(Plugins));
+    plugins->count = 0; // initialize plugins table
     // Open Plugin Config from ARK's installation folder
     char path[ARK_PATH_SIZE];
     strcpy(path, ark_config->arkpath);
@@ -343,10 +435,13 @@ void LoadPlugins(){
     ProcessConfigFile("ef0:/SEPLUGINS/PLUGINS.TXT", &addPlugin, &removePlugin);
     // start all loaded plugins
     startPlugins();
+    // free resources
+    oe_free(plugins);
+    plugins = NULL;
     is_plugins_loading = 0;
 }
 
-void loadSettings(void* settingsHandler){
+void loadSettings(){
     checkControllerInput();
     if (disable_settings || isRecoveryMode())
         return; // don't load settings in recovery mode
@@ -354,5 +449,6 @@ void loadSettings(void* settingsHandler){
     char path[ARK_PATH_SIZE];
     strcpy(path, ark_config->arkpath);
     strcat(path, "SETTINGS.TXT");
-    ProcessConfigFile(path, settingsHandler, NULL);
+    ProcessConfigFile(path, settingsEnabler, settingsDisabler);
+    se_config.magic = ARK_CONFIG_MAGIC;
 }

@@ -80,11 +80,11 @@ PspIoDrv * sctrlHENFindDriver(char * drvname)
     pspSdkSetK1(k1);
 
     if (driver == NULL){
-        if(0 == strcasecmp(drvname, "msstor")) {
+        if(0 == stricmp(drvname, "msstor")) {
 			return sctrlHENFindDriver("eflash0a0f");
 		}
 
-		if(0 == strcasecmp(drvname, "msstor0p")) {
+		if(0 == stricmp(drvname, "msstor0p")) {
 			return sctrlHENFindDriver("eflash0a0f1p");
 		}
     }
@@ -261,8 +261,9 @@ u32 sctrlHENFindImport(const char *szMod, const char *szLib, u32 nid)
     return 0;
 }
 
-void sctrlHENGetArkConfig(ARKConfig* conf){
-    memcpy(conf, ark_config, sizeof(ARKConfig));
+void* sctrlHENGetArkConfig(ARKConfig* conf){
+    if (conf) memcpy(conf, ark_config, sizeof(ARKConfig));
+    return ark_config;
 }
 
 void sctrlHENSetArkConfig(ARKConfig* conf){

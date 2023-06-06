@@ -10,6 +10,7 @@ extern "C"{
 #include <pspkernel.h>
 #include <pspsysmem_kernel.h>
 #include <pspctrl.h>
+#include <module2.h>
 
 /**
  * Functions to let user mode access certain functions only available in
@@ -105,7 +106,7 @@ int kuKernelGetModel(void);
  *
  * @return < 0 on error
  */
-int kuKernelFindModuleByName(char *modname, SceModule *mod);
+int kuKernelFindModuleByName(char *modname, SceModule2 *mod);
 
 /**
  * Invalidate the entire instruction cache
@@ -117,14 +118,14 @@ void kuKernelIcacheInvalidateAll(void);
  *
  * @param addr - Address to read, must have 4 bytes alignment
  */
-unsigned int kuKernelPeekw(void *addr);
+u32 kuKernelPeekw(void *addr);
 
 /**
  * Write 4 bytes to memory (with kernel memory access)
  *
  * @param addr - Address to write, must have 4 bytes alignment
  */
-void kuKernelPokew(void *addr, unsigned int value);
+void kuKernelPokew(void *addr, u32 value);
 
 /**
  * memcpy (with kernel memory access)

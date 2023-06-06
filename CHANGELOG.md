@@ -1,5 +1,45 @@
 # ARK Changelog
 
+## Version 4.20.53 (2013-06-06)
+- https://github.com/PSP-Archive/ARK-4/releases/tag/r42053
+- Improved `Advanced VSH Menu` options in `Adrenaline` installations.
+- Improved `Advanced VSH Menu` options in `PSP Go` models.
+- Fixed several issues in `(Advanced) VSH Menu` that would prevent configuration from being updated.
+- Fixed and improved random color selection in `(Advanced) VSH Menu`.
+- Added support for `PBOOT.PBP` updates and `Prometheus`-patched games in the `Boot Random ISO` feature of `Advanced VSH Menu`
+- Improved memory management in the `XMB` when reading `ISO/CSO` files.
+- Added new themes `Windows 7`, `Windows XP` and `CyanogenPSP` for `Custom Launcher`/`Recovery`.
+- Severeal more cleanup and improvements.
+
+## Version 4.20.52 (2023-06-05)
+- https://github.com/PSP-Archive/ARK-4/releases/tag/r42052
+- Added patch to remove annoying "overclocked" message in ATV Offroad Fury Pro.
+- You can now change the size of the main menu in Custom Launcher or Recovery.
+- Added Korean translation to XMB Control.
+- Fixed graphical glitch in Advanced VSH Menu on the Convert Battery option.
+- Some other cleanup in the compatibility layers.
+
+## Version 4.20.51 (2023-05-28)
+- https://github.com/PSP-Archive/ARK-4/releases/tag/r42051
+- Fixed crash when exiting custom launcher on PS Vita.
+- Added Dutch translations to XMB Control.
+
+## Version 4.20.50 (2023-05-26)
+- https://github.com/PSP-Archive/ARK-4/releases/tag/r42050
+- Completely refactored all core code related to settings handling. It is now faster and consumes less resources.
+- Added ability to change `VSH` and `UMD` region in `Advanced VSH Menu`, changing `UMD` region is instant while changing `VSH` region requires a reset.
+- Added `PSN` patches and fixes from `PRO` CFW.
+- Other cleanup and improvements.
+
+## Version 4.20.40 (2023-05-24)
+- https://github.com/PSP-Archive/ARK-4/releases/tag/r42040
+- You can now install all external modules in flash0, allowing for a full permanent installation.
+- Fixed issue when booting some ISOs in the `custom launcher`.
+- Added ability to `restart` and `shutdown` on `custom launcher` (for `PSP` only).
+- Added configuration to change behavior of Start button in `custom launcher`, options are: Disabled, Boot Current Game, Boot Last Game, Boot Random ISO.
+- Holding the `L-trigger` while loading the `custom launcher` will autoboot the last played game.
+- Cleanup of `pentazemin` compatibility layer and other parts of the `Custom Firmware`.
+
 ## Version 4.20.35 (2023-05-16)
 - https://github.com/PSP-Archive/ARK-4/releases/tag/r42035
 - Improved `660on661` patch. Fixes crashes and other issues in homebrew such as `chronoswitch` and others.

@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <pspsdk.h>
 #include <pspthreadman_kernel.h>
-#include <pspsysmem.h>
 #include <pspumd.h>
 #include "systemctrl.h"
 #include "systemctrl_se.h"
@@ -170,11 +169,11 @@ static int is_iso(SceIoDirent * dir)
     if (ext > dir->d_name) {
         //check extension
         if (
-                strcasecmp(ext, ".iso") == 0 ||
-                strcasecmp(ext, ".cso") == 0 ||
-                strcasecmp(ext, ".zso") == 0 ||
-                strcasecmp(ext, ".dax") == 0 ||
-                strcasecmp(ext, ".jso") == 0
+                stricmp(ext, ".iso") == 0 ||
+                stricmp(ext, ".cso") == 0 ||
+                stricmp(ext, ".zso") == 0 ||
+                stricmp(ext, ".dax") == 0 ||
+                stricmp(ext, ".jso") == 0
            ) {
             result = 1;
         }
@@ -935,22 +934,25 @@ int vpbp_getstat(const char * file, SceIoStat * stat)
     stat->st_mode = 0x21FF;
     stat->st_attr = 0x20;
     stat->st_size = vpbp->iso_total_size;
-    memcpy(&stat->sce_st_ctime, &vpbp->ctime, sizeof(ScePspDateTime));
-    memcpy(&stat->sce_st_mtime, &vpbp->ctime, sizeof(ScePspDateTime));
-    memcpy(&stat->sce_st_atime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&stat->st_ctime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&stat->st_mtime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&stat->st_atime, &vpbp->ctime, sizeof(ScePspDateTime));
     unlock();
 
     return ret;
 }
 
-static int has_prometheus_module(VirtualPBP *vpbp)
+int has_prometheus_module(const char *isopath)
 {
     int ret;
     u32 size, lba;
+
+    int k1 = pspSdkSetK1(0);
     
-    ret = isoOpen(vpbp->name);
+    ret = isoOpen(isopath);
 
     if (ret < 0) {
+        pspSdkSetK1(k1);
         return 0;
     }
 
@@ -959,17 +961,20 @@ static int has_prometheus_module(VirtualPBP *vpbp)
 
     isoClose();
 
+    pspSdkSetK1(k1);
     return ret;
 }
 
-static int has_update_file(VirtualPBP* vpbp, char* update_file){
+int has_update_file(const char* isopath, char* update_file){
     // game ID is always at offset 0x8373 within the ISO
     int lba = 16;
     int pos = 883;
 
     char game_id[10];
 
-    isoOpen(vpbp->name);
+    int k1 = pspSdkSetK1(0);
+
+    isoOpen(isopath);
     isoRead(game_id, lba, pos, 10);
     isoClose();
 
@@ -983,7 +988,7 @@ static int has_update_file(VirtualPBP* vpbp, char* update_file){
 
     // try to find the update file
     char path[256];
-    char* devs[] = {"ms0:", "ef0:"};
+    static char* devs[] = {"ms0:", "ef0:"};
 
     for (int i=0; i<2; i++){
         sprintf(path, "%s/PSP/GAME/%s/PBOOT.PBP", devs[i], game_id);
@@ -992,10 +997,12 @@ static int has_update_file(VirtualPBP* vpbp, char* update_file){
             // found
             sceIoClose(fd);
             if (update_file) strcpy(update_file, path);
+            pspSdkSetK1(k1);
             return 1;
         }
     }
     // not found
+    pspSdkSetK1(k1);
     return 0;
 }
 
@@ -1128,8 +1135,8 @@ int vpbp_loadexec(char * file, struct SceKernelLoadExecVSHParam * param)
     param->key = "umdemu";
     apitype = 0x123;
 
-    static char pboot_path[256];
-    int has_pboot = has_update_file(vpbp, pboot_path);
+    char pboot_path[256];
+    int has_pboot = has_update_file(vpbp->name, pboot_path);
 
     if (has_pboot){
         // configure to use dlc/update
@@ -1141,7 +1148,7 @@ int vpbp_loadexec(char * file, struct SceKernelLoadExecVSHParam * param)
         if (psp_model == PSP_GO) {
             char devicename[20];
             ret = get_device_name(devicename, sizeof(devicename), pboot_path);
-            if(ret == 0 && 0 == strcasecmp(devicename, "ef0:")) {
+            if(ret == 0 && 0 == stricmp(devicename, "ef0:")) {
                 apitype = 0x126;
             }
         }
@@ -1153,12 +1160,12 @@ int vpbp_loadexec(char * file, struct SceKernelLoadExecVSHParam * param)
         if (psp_model == PSP_GO) {
             char devicename[20];
             ret = get_device_name(devicename, sizeof(devicename), vpbp->name);
-            if(ret == 0 && 0 == strcasecmp(devicename, "ef0:")) {
+            if(ret == 0 && 0 == stricmp(devicename, "ef0:")) {
                 apitype = 0x125;
             }
         }
 
-        if (has_prometheus_module(vpbp)) {
+        if (has_prometheus_module(vpbp->name)) {
             param->argp = "disc0:/PSP_GAME/SYSDIR/EBOOT.OLD";
         } else {
             param->argp = "disc0:/PSP_GAME/SYSDIR/EBOOT.BIN";
@@ -1181,7 +1188,7 @@ SceUID vpbp_dopen(const char * dirname)
     lock();
     result = sceIoDopen(dirname);
 
-    if (result >= 0 && strlen(dirname) > 4 && 0 == strcasecmp(dirname+4, "/ISO")) {
+    if (result >= 0 && strlen(dirname) > 4 && 0 == stricmp(dirname+4, "/ISO")) {
         load_cache();
     }
 
@@ -1202,9 +1209,9 @@ static int add_fake_dirent(SceIoDirent *dir, int vpbp_idx)
     dir->d_stat.st_mode = 0x11FF;
     dir->d_stat.st_attr = 0x10;
 
-    memcpy(&dir->d_stat.sce_st_ctime, &vpbp->ctime, sizeof(ScePspDateTime));
-    memcpy(&dir->d_stat.sce_st_mtime, &vpbp->ctime, sizeof(ScePspDateTime));
-    memcpy(&dir->d_stat.sce_st_atime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&dir->d_stat.st_ctime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&dir->d_stat.st_mtime, &vpbp->ctime, sizeof(ScePspDateTime));
+    memcpy(&dir->d_stat.st_atime, &vpbp->ctime, sizeof(ScePspDateTime));
 
     return 1;
 }
@@ -1251,8 +1258,8 @@ int vpbp_dread(SceUID fd, SceIoDirent * dir)
         STRCAT_S(vpbp->name, entry->path + sizeof("xxx:/PSP/GAME") - 1);
         STRCAT_S(vpbp->name, "/");
         STRCAT_S(vpbp->name, dir->d_name);
-        memcpy(&vpbp->ctime, &dir->d_stat.sce_st_ctime, sizeof(vpbp->ctime));
-        memcpy(&vpbp->mtime, &dir->d_stat.sce_st_mtime, sizeof(vpbp->mtime));
+        memcpy(&vpbp->ctime, &dir->d_stat.st_ctime, sizeof(vpbp->ctime));
+        memcpy(&vpbp->mtime, &dir->d_stat.st_mtime, sizeof(vpbp->mtime));
 
         ret = get_cache(vpbp->name, &vpbp->mtime, vpbp);
 
@@ -1282,7 +1289,7 @@ int vpbp_dclose(SceUID fd)
     lock();
     entry = dirent_search(fd);
 
-    if (entry != NULL && strlen(entry->path) > 4 && 0 == strcasecmp(entry->path+4, "/PSP/GAME")) {
+    if (entry != NULL && strlen(entry->path) > 4 && 0 == stricmp(entry->path+4, "/PSP/GAME")) {
         save_cache();
     }
 

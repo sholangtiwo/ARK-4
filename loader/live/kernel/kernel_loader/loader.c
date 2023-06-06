@@ -10,6 +10,7 @@
 #include "core/compat/vitapops/rebootex/payload.h"
 #include "core/compat/pentazemin/rebootex/payload.h"
 
+
 static int isVitaFile(char* filename){
     return (strstr(filename, "psv")!=NULL // PS Vita btcnf replacement, not used on PSP
             || strstr(filename, "660")!=NULL // PSP 6.60 modules can be used on Vita, not needed for PSP
@@ -19,16 +20,17 @@ static int isVitaFile(char* filename){
 }
 
 void flashPatch(){
+    extern ARKConfig* ark_config;
     extern int extractFlash0Archive();
     char archive[ARK_PATH_SIZE];
     strcpy(archive, ark_config->arkpath);
     strcat(archive, FLASH0_ARK);
 
     if (IS_VITA_ADR(ark_config)){ // read FLASH0.ARK into RAM
+        strcpy(ark_config->exploit_id, "Adrenaline");
         PRTSTR("Reading FLASH0.ARK into RAM");
-        flashfs = (void*)ARK_FLASH;
         int fd = k_tbl->KernelIOOpen(archive, PSP_O_RDONLY, 0777);
-        k_tbl->KernelIORead(fd, flashfs, MAX_FLASH0_SIZE);
+        k_tbl->KernelIORead(fd, ARK_FLASH, MAX_FLASH0_SIZE);
         k_tbl->KernelIOClose(fd);
     }
     else if (IS_PSP(ark_config)){ // on PSP, extract FLASH0.ARK into flash0
@@ -46,6 +48,7 @@ void flashPatch(){
         }
     }
     else{ // Patching flash0 on Vita
+        strcpy(ark_config->exploit_id, "ePSP");
         PRTSTR("Installing on PS Vita");
         strcpy(ark_config->exploit_id, "Vita");
         patchKermitPeripheral(k_tbl);
@@ -72,7 +75,6 @@ void patchedmemcpy(void* a1, void* a2, u32 size){
 // yo dawg, I heard you like patches
 // so I made a patch that patches your patch to inject my patch to patch your patches
 void patchAdrenalineReboot(SceModule2* loadexec){
-    strcpy(ark_config->exploit_id, "Adrenaline");
     for (u32 addr = loadexec->text_addr; addr < loadexec->text_addr+loadexec->text_size; addr+=4){
         if (_lw(addr) == 0x04400020) {
             // found patch that injects rebootex

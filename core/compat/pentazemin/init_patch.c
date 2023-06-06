@@ -23,7 +23,12 @@ typedef struct {
     int argPartId;
 } SceLoadCoreBootModuleInfo;
 
-RebootConfigARK* reboot_config = NULL;
+// Sony flash0 files
+typedef struct {
+    int nfiles;
+    char bootfile[100][64]; // list of boot files
+} SonyFlashFiles;
+SonyFlashFiles* flash_files = (SonyFlashFiles*)(0x08800100);
 
 static int cur_file = 14;
 
@@ -31,7 +36,7 @@ SceUID sceKernelLoadModuleBufferBootInitBtcnfPatched(SceLoadCoreBootModuleInfo *
 
 	char path[64];
 
-	sprintf(path, "ms0:/__ADRENALINE__/flash0%s", &(reboot_config->bootfile[cur_file])); //not use flash0 cause of cxmb
+	sprintf(path, "ms0:/__ADRENALINE__/flash0%s", &(flash_files->bootfile[cur_file])); //not use flash0 cause of cxmb
 
 	cur_file++;
 
@@ -47,7 +52,7 @@ SceUID LoadModuleBufferAnchorInBtcnfPatched(void *buf, SceLoadCoreBootModuleInfo
 
 	char path[64];
 
-	sprintf(path, "ms0:/__ADRENALINE__/flash0%s", &(reboot_config->bootfile[cur_file]));
+	sprintf(path, "ms0:/__ADRENALINE__/flash0%s", &(flash_files->bootfile[cur_file]));
 
 	cur_file++;
 
@@ -61,34 +66,6 @@ SceUID LoadModuleBufferAnchorInBtcnfPatched(void *buf, SceLoadCoreBootModuleInfo
 int (*ARKPatchInit)(int (* module_bootstart)(SceSize, void *), void *argp) = NULL;
 int AdrenalinePatchInit(int (* module_bootstart)(SceSize, void *), void *argp) {
 	u32 init_addr = ((u32)module_bootstart) - 0x1A54;
-
-	/*
-	u32 init_size = 0x3400; // aprox
-
-	int patches = 3;
-	for (u32 addr=init_addr; addr<init_addr+init_size && patches; addr+=4){
-		u32 data = _lw(addr);
-		if (data == 0x2405090B){
-			// Ignore StopInit
-			_sw(0, addr + 4);
-			patches--;
-		}
-		else if (data == 0x7C633C00){
-			// Redirect load functions to load from MS
-			u32 a = addr-68;
-			LoadModuleBufferAnchorInBtcnf = K_EXTRACT_CALL(a);
-			MAKE_CALL(a, LoadModuleBufferAnchorInBtcnfPatched);
-			_sw(0x02402821, a + 4); //move $a1, $s2
-			patches--;
-		}
-		else if (data == 0x7C633C00){
-			u32 a = addr+64;
-			_sw(0x02402021, a); //move $a0, $s2
-			MAKE_CALL(a + 16, sceKernelLoadModuleBufferBootInitBtcnfPatched);
-			patches--;
-		}
-	}
-	*/
 
 	// Ignore StopInit
 	_sw(0, init_addr + 0x18EC);
@@ -111,11 +88,9 @@ SceModule2* patchLoaderCore(void)
 {
     // Find Module
     SceModule2* mod = (SceModule2 *)sceKernelFindModuleByName("sceLoaderCore");
-	
-	reboot_config = sctrlHENGetRebootexConfig(NULL);
 
-	for (int i=0; i<reboot_config->nfiles; i++){
-		if (strcmp(&(reboot_config->bootfile[i]), "/kd/init.prx") == 0){
+	for (int i=0; i<flash_files->nfiles; i++){
+		if (strcmp(&(flash_files->bootfile[i]), "/kd/init.prx") == 0){
 			cur_file = i+1;
 			break;
 		}

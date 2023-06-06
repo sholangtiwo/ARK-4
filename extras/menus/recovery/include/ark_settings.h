@@ -382,7 +382,6 @@ settings_entry* ark_conf_entries_adr[] = {
     (settings_entry*)&hidepics,
     (settings_entry*)&hidemac,
     (settings_entry*)&hidedlc,
-    (settings_entry*)&noled,
     (settings_entry*)&vshregion,
 };
 #define MAX_ARK_CONF_ADR (sizeof(ark_conf_entries_adr)/sizeof(ark_conf_entries_adr[0]))
@@ -468,6 +467,9 @@ static unsigned char* configConvert(string conf){
     }
     else if (strcasecmp(conf.c_str(), "noled") == 0){
         return &(ark_config.noled);
+    }
+    else if (strcasecmp(conf.c_str(), "region_none") == 0){
+        ark_config.regionchange = 0;
     }
     else if (strcasecmp(conf.c_str(), "region_jp") == 0){
         ark_config.regionchange = REGION_JAPAN;

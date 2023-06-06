@@ -27,6 +27,7 @@
 #include <pspkernel.h>
 #include <psputility.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdbool.h>
 #include <pspumd.h>
 
@@ -64,10 +65,10 @@ SceCtrlData ctrl_pad;
 int stop_stock=0;
 int sub_stop_stock=0;
 int thread_id=0;
+int reset_vsh = 0;
 
 t_conf config;
-
-#define MAX_GAMES 50
+t_conf old_config;
 
 SEConfig cnf;
 static SEConfig cnf_old;
@@ -78,7 +79,124 @@ UmdVideoList g_umdlist;
 
 ARKConfig _ark_conf;
 ARKConfig* ark_config = &_ark_conf;
-extern int is_pandora;
+int cur_battery;
+u32 swap_xo;
+
+static struct{
+	u8 fg_color;
+	u8 bg_color;
+} random_colors[] = {
+	{1, 11},
+	{2, 11},
+	{4, 11},
+	{6, 11},
+	{12, 11},
+	{14, 11},
+	{20, 11},
+	{27, 11},
+	{2, 12},
+	{6, 12},
+	{8, 12},
+	{12, 12},
+	{27, 12},
+	{28, 12},
+	{1, 14},
+	{2, 14},
+	{4, 14},
+	{6, 14},
+	{8, 14},
+	{14, 14},
+	{24, 14},
+	{4, 8},
+	{6, 8},
+	{12, 8},
+	{20, 8},
+	{24, 8},
+	{2, 8},
+	{2, 9},
+	{2, 25},
+	{2, 26},
+	{2, 28},
+	{4, 8},
+	{6, 8},
+	{4, 12},
+	{4, 13},
+	{4, 15},
+	{4, 17},
+	{4, 18},
+	{4, 19},
+	{4, 20},
+	{20, 20},
+	{24, 20},
+	{27, 20},
+	{2, 22},
+	{2, 23},
+	{8, 23},
+	{24, 23},
+	{27, 23},
+	{2, 24},
+	{4, 24},
+	{6, 24},
+	{14, 24},
+	{16, 24},
+	{20, 24},
+	{24, 24},
+	{27, 24},
+	{4, 25},
+	{6, 25},
+	{1, 25},
+	{2, 25},
+	{3, 25},
+	{4, 25},
+	{5, 25},
+	{6, 25},
+	{7, 25},
+	{8, 25},
+	{9, 25},
+	{10, 25},
+	{11, 25},
+	{12, 25},
+	{13, 25},
+	{14, 25},
+	{15, 25},
+	{16, 25},
+	{17, 25},
+	{18, 25},
+	{19, 25},
+	{20, 25},
+	{21, 25},
+	{22, 25},
+	{23, 25},
+	{25, 25},
+	{26, 25},
+	{27, 25},
+	{28, 25},
+	{1, 26},
+	{2, 26},
+	{4, 26},
+	{6, 26},
+	{8, 26},
+	{18, 26},
+	{20, 26},
+	{24, 26},
+	{27, 26},
+	{10, 12},
+	{10, 20},
+	{10, 24},
+	{10, 27},
+	{25, 7},
+	{27, 7},
+	{2, 2},
+	{14, 2},
+	{20, 2},
+	{27, 3},
+	{27, 5},
+	{27, 7},
+	{27, 8},
+	{27, 9},
+	{27, 11},
+	{27, 25},
+};
 
 int module_start(int argc, char *argv[])
 {
@@ -230,10 +348,9 @@ void exec_recovery_menu(){
 void import_classic_plugins() {
 	SceUID game, vsh, pops, plugins;
 	int i = 0;
-	int initial = 1;
-	int chunksize = 256;
+	int chunksize = 512;
 	int bytesRead;
-	char * buf = (char *)malloc(chunksize);
+	char *buf = malloc(chunksize);
 	char *gameChar = "game, ";
 	int gameCharLength = strlen(gameChar);
 	char *vshChar = "vsh, ";
@@ -260,14 +377,13 @@ void import_classic_plugins() {
 	}
 
 	// GAME.txt
-	initial = 1;
+	memset(buf, 0, chunksize);
 	while ((bytesRead = sceIoRead(game, buf, chunksize)) > 0) {
 		for(i = 0; i < bytesRead; i++) {
-			if (initial || buf[i-1] == '\n'){
+			if (i == 0 || buf[i-1] == '\n' || buf[i-1] == '\0'){
 				sceIoWrite(plugins, gameChar, gameCharLength);
-				initial = 0;
 			}
-			if (buf[i] == ' ')
+			if (buf[i] == ' ' && i != 0)
 				sceIoWrite(plugins, ",", 1);
 			sceIoWrite(plugins, &buf[i], 1);
 		}
@@ -279,16 +395,13 @@ void import_classic_plugins() {
 	memset(buf, 0, chunksize);
 
 	// VSH.txt
-	initial = 1;
 	while ((bytesRead = sceIoRead(vsh, buf, chunksize)) > 0) {
 		for(i = 0; i < bytesRead; i++) {
-			if (initial || buf[i-1] == '\n'){
+			if (i == 0 || buf[i-1] == '\n' || buf[i-1] == '\0'){
 				sceIoWrite(plugins, vshChar, vshCharLength);
-				initial = 0;
 			}
-			if (buf[i] == ' ')
+			if (buf[i] == ' ' && i != 0)
 				sceIoWrite(plugins, ",", 1);
-
 			sceIoWrite(plugins, &buf[i], 1);
 		}
 	}
@@ -299,16 +412,13 @@ void import_classic_plugins() {
 
 
 	// POP.txt
-	initial = 1;
 	while ((bytesRead = sceIoRead(pops, buf, chunksize)) > 0) {
 		for(i = 0; i < bytesRead; i++) {
-			if (initial || buf[i-1] == '\n'){
+			if (i == 0 || buf[i-1] == '\n' || buf[i-1] == '\0'){
 				sceIoWrite(plugins, popsChar, popsCharLength);
-				initial = 0;
 			}
-			if (buf[i] == ' ')
+			if (buf[i] == ' ' && i != 0)
 				sceIoWrite(plugins, ",", 1);
-
 			sceIoWrite(plugins, &buf[i], 1);
 		}
 	}
@@ -318,7 +428,7 @@ void import_classic_plugins() {
 	sceIoClose(plugins);
 	free(buf);
 
-	sctrlKernelExitVSH(NULL);
+	reset_vsh = 1;
 	
 }
 
@@ -343,7 +453,7 @@ static int get_umdvideo(UmdVideoList *list, char *path)
 		if(p == NULL)
 			p = dir.d_name;
 
-		if(0 == strcasecmp(p, ".iso") || 0 == strcasecmp(p, ".cso") || 0 == strcasecmp(p, ".zso") || 0 == strcasecmp(p, ".dax") || 0 == strcasecmp(p, ".jso")) {
+		if(0 == stricmp(p, ".iso") || 0 == stricmp(p, ".cso") || 0 == stricmp(p, ".zso") || 0 == stricmp(p, ".dax") || 0 == stricmp(p, ".jso")) {
 			scePaf_sprintf(fullpath, "%s/%s", path, dir.d_name);
 			umdvideolist_add(list, fullpath);
 		}
@@ -433,19 +543,52 @@ void exec_random_game() {
 
     struct SceKernelLoadExecVSHParam param;
     int apitype;
+	char* loadexec_file;
     memset(&param, 0, sizeof(param));
     param.size = sizeof(param);
-    param.args = 33;
-    param.argp = (char*)"disc0:/PSP_GAME/SYSDIR/EBOOT.BIN";
-    param.key = "umdemu";
-    if (psp_model == PSP_GO)
-        apitype = 0x125;
-    else
-        apitype = 0x123;
-
-
-    sctrlSESetBootConfFileIndex(3);
+    
+	//set iso file for reboot
     sctrlSESetUmdFile(game);
+
+    //set iso mode for reboot
+    sctrlSESetDiscType(PSP_UMD_TYPE_GAME);
+    sctrlSESetBootConfFileIndex(MODE_INFERNO);
+
+    param.key = "umdemu";
+
+    char pboot_path[256];
+    int has_pboot = has_update_file(game, pboot_path);
+
+    if (has_pboot){
+        // configure to use dlc/update
+        loadexec_file = param.argp = pboot_path;
+        param.args = strlen(pboot_path) + 1;
+
+        if (psp_model == PSP_GO && game[0] == 'e' && game[1] == 'f') {
+            apitype = 0x126;
+        }
+		else {
+			apitype = 0x124;
+		}
+    }
+    else{
+        //reset and configure reboot parameter
+        loadexec_file = game;
+
+        if (psp_model == PSP_GO && game[0] == 'e' && game[1] == 'f') {
+            apitype = 0x125;
+        }
+		else {
+			apitype = 0x123;
+		}
+
+        if (has_prometheus_module(game)) {
+            param.argp = "disc0:/PSP_GAME/SYSDIR/EBOOT.OLD";
+        } else {
+            param.argp = "disc0:/PSP_GAME/SYSDIR/EBOOT.BIN";
+        }
+        param.args = 33;
+    }
 
     sctrlKernelLoadExecVSHWithApitype(apitype, game, &param);
 
@@ -477,7 +620,7 @@ static void launch_umdvideo_mount(void)
 			// cancel mount
 			sctrlSESetUmdFile("");
 			sctrlSESetBootConfFileIndex(MODE_UMD);
-			sctrlKernelExitVSH(NULL);
+			reset_vsh = 1;
 		}
 
 		return;
@@ -503,7 +646,7 @@ static void launch_umdvideo_mount(void)
 	sctrlSESetUmdFile(path);
 	sctrlSESetBootConfFileIndex(MODE_VSHUMD);
 	sctrlSESetDiscType(type);
-	sctrlKernelExitVSH(NULL);
+	reset_vsh = 1;
 }
 
 static char g_cur_font_select[256] __attribute((aligned(64)));
@@ -715,10 +858,10 @@ int WriteSerial(u16* pdata)
 }
 
 static void convert_battery(void) {
-	if (is_pandora < 0) return;
+	if (cur_battery < 0 || cur_battery > 1) return;
 	u16 buffer[2];
 
-	if (is_pandora){
+	if (cur_battery){
 		buffer[0] = 0x1234;
         buffer[1] = 0x5678;
 	}
@@ -729,12 +872,13 @@ static void convert_battery(void) {
 	WriteSerial(buffer);
 };
 
-static void check_battery(void) {
+static int check_battery(void) {
 
     int sel = 0;
     int batsel;
     u32 baryon, tachyon;
 	struct KernelCallArg args;
+	int is_pandora = 0;
 
 	SysconGetBaryonVersion = sctrlHENFindFunction("sceSYSCON_Driver", "sceSyscon_driver", 0x7EC5A957);
 	SysregGetTachyonVersion = sctrlHENFindFunction("sceLowIO_Driver", "sceSysreg_driver", 0xE2A5D1EE);
@@ -757,22 +901,33 @@ static void check_battery(void) {
         if(serial[0] == 0xFFFF && serial[1] == 0xFFFF) is_pandora = 1;
         else is_pandora = 0;
     }
+	return is_pandora;
 }
 
 void delete_hibernation(){
 	if (psp_model == PSP_GO){
 		vshCtrlDeleteHibernation();
-		sctrlKernelExitVSH(NULL);
+		reset_vsh = 1;
 	}
 }
 
 static int activate_codecs()
 {
-	set_registry_value("/CONFIG/BROWSER", "flash_activated", 1);
-	set_registry_value("/CONFIG/BROWSER", "flash_play", 1);
-	set_registry_value("/CONFIG/MUSIC", "wma_play", 1);
 
-	sctrlKernelExitVSH(NULL);
+	int flash_activated = 0;
+	int flash_play = 0;
+	int wma_play = 0;
+
+	get_registry_value("/CONFIG/BROWSER", "flash_activated", &flash_activated);
+	get_registry_value("/CONFIG/BROWSER", "flash_activated", &flash_play);
+	get_registry_value("/CONFIG/MUSIC", "wma_play", &wma_play);
+
+	if (!flash_activated || !flash_play || !wma_play){
+		set_registry_value("/CONFIG/BROWSER", "flash_activated", 1);
+		set_registry_value("/CONFIG/BROWSER", "flash_play", 1);
+		set_registry_value("/CONFIG/MUSIC", "wma_play", 1);
+		reset_vsh = 1;
+	}
 	
 	return 0;
 }
@@ -784,9 +939,98 @@ static int swap_buttons()
 	value = !value;
 	set_registry_value("/CONFIG/SYSTEM/XMB", "button_assign", value);
 	
-	sctrlKernelExitVSH(NULL);
+	reset_vsh = 1;
 
 	return 0;
+}
+
+static void recreateRegionSetting(char* oldtext, char* newtext){
+	char path[ARK_PATH_SIZE];
+    strcpy(path, ark_config->arkpath);
+    strcat(path, "SETTINGS.TXT");
+
+	// open file and get size
+	int fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+
+	if (fd < 0){
+		fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
+		if (fd >= 0){
+			sceIoWrite(fd, "\nxmb, ", 6);
+			sceIoWrite(fd, newtext, strlen(newtext));
+			sceIoWrite(fd, ", on\n", 5);
+			sceIoClose(fd);
+		}
+		return;
+	}
+
+	size_t size = sceIoLseek32(fd, 0, SEEK_END);
+	sceIoLseek32(fd, 0, SEEK_SET);
+
+	// allocate buffer
+	int memid = sceKernelAllocPartitionMemory(2, "tmp", PSP_SMEM_High, size+1, NULL);
+	if (memid < 0) return;
+	char* buf = sceKernelGetBlockHeadAddr(memid);
+	memset(buf, 0, size+1);
+
+	// read file and close
+	sceIoRead(fd, buf, size);
+	sceIoClose(fd);
+
+	// open file for writing
+	fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT|PSP_O_TRUNC, 0777);
+
+	char* vshreg = strstr(buf, oldtext);
+	if (vshreg != NULL){
+		while (vshreg[-1] != ',' && vshreg[-1] != ' ' && vshreg[-1] != '\t'){
+			vshreg = strstr(vshreg+1, oldtext);
+			if (vshreg == NULL) break;
+		}
+	}
+
+	if (vshreg){
+		u32 p1_size = (u32)vshreg - (u32)buf;
+		char* p2 = strstr(vshreg, ",");
+		sceIoWrite(fd, buf, p1_size);
+		sceIoWrite(fd, newtext, strlen(newtext));
+		sceIoWrite(fd, p2, strlen(p2));
+	}
+	else{
+		sceIoWrite(fd, buf, size);
+		sceIoWrite(fd, "\nxmb, ", 6);
+		sceIoWrite(fd, newtext, strlen(newtext));
+		sceIoWrite(fd, ", on\n", 5);
+	}
+
+	sceIoClose(fd);
+
+	sceKernelFreePartitionMemory(memid);
+}
+
+static void recreateUmdKeys(){
+	struct KernelCallArg args;
+	memset(&args, 0, sizeof(args));
+	
+	void* generate_umd_keys = sctrlHENFindFunction("ARKCompatLayer", "PSPCompat", 0x2EE76C36);
+	kuKernelCall(generate_umd_keys, &args);
+
+	// patch region check if not done already
+	void* hookImport = sctrlHENFindFunction("SystemControl", "SystemCtrlForKernel", 0x869F24E9);
+	SceModule2 mod; kuKernelFindModuleByName("vsh_module", &mod);
+	args.arg1 = &mod;
+	args.arg2 = "sceVshBridge";
+	args.arg3 = 0x5C2983C2;
+	args.arg4 = 1;
+	kuKernelCall(hookImport, &args);
+}
+
+void checkRandomColors(){
+	// Random Colors
+	if ((config.vsh_fg_color || config.vsh_bg_color) == 0) {
+		srand(time(NULL));
+		int picked = rand() % (sizeof(random_colors)/sizeof(random_colors[0]));
+		config.vsh_fg_color = random_colors[picked].fg_color;
+		config.vsh_bg_color = random_colors[picked].bg_color;
+	}
 }
 
 void loadConfig(){
@@ -802,15 +1046,21 @@ void loadConfig(){
 	sceIoRead(fp, &config, sizeof(t_conf));
     sceIoClose(fp);
 
-	cnf.vsh_bg_colors = config.vsh_bg_color;
-	cnf.vsh_fg_colors = config.vsh_fg_color;
+	get_registry_value("/CONFIG/SYSTEM/XMB", "button_assign", &swap_xo);
+	int is_pandora = check_battery();
 
-	u32 tmp_swap_xo_32;
-	get_registry_value("/CONFIG/SYSTEM/XMB", "button_assign", &tmp_swap_xo_32);
-	cnf.swap_xo = tmp_swap_xo_32;
+	if(IS_VITA_ADR(ark_config) || is_pandora < 0) {
+		cur_battery = 2;
+	} else {
+		cur_battery = is_pandora;
+	}
+	if(IS_VITA_ADR(ark_config))
+		cnf.usbdevice_rdonly = 2;
+	
+	checkRandomColors();
 }
 
-void saveConfig(){
+void saveConfig(int saveumdregion, int savevshregion){
 	char path[ARK_PATH_SIZE];
     strcpy(path, ark_config->arkpath);
     strcat(path, CONFIG_PATH);
@@ -820,6 +1070,26 @@ void saveConfig(){
 
 	sceIoWrite(fp, &config, sizeof(t_conf));
     sceIoClose(fp);
+
+	if (savevshregion){
+		char tmp[128];
+		sprintf(tmp, "fakeregion_%d", cnf.vshregion);
+		recreateRegionSetting("fakeregion_", tmp);
+	}
+
+	if (saveumdregion){
+		recreateUmdKeys();
+		static char* regions[] = {"region_none", "region_jp", "region_us", "region_eu"};
+		recreateRegionSetting("region_", regions[cnf.umdregion]);
+	}
+}
+
+void checkConfig(){
+	checkRandomColors();
+	if(scePaf_memcmp(&cnf_old, &cnf, sizeof(SEConfig)) || scePaf_memcmp(&old_config, &config, sizeof(t_conf))){
+		vctrlVSHUpdateConfig(&cnf);
+		saveConfig(cnf_old.umdregion != cnf.umdregion, cnf_old.vshregion != cnf.vshregion);	
+	}
 }
 
 int TSRThread(SceSize args, void *argp)
@@ -827,6 +1097,7 @@ int TSRThread(SceSize args, void *argp)
 	sceKernelChangeThreadPriority(0, 8);
 	vctrlVSHRegisterVshMenu(EatKey);
 	sctrlSEGetConfig(&cnf);
+	sctrlHENGetArkConfig(ark_config);
 
 	check_battery();
 
@@ -838,12 +1109,13 @@ int TSRThread(SceSize args, void *argp)
 	if(g_cur_font_select[0] != '\0') {
 		load_external_font(g_cur_font_select);
 	}
-
-	umdvideolist_init(&g_umdlist);
-	umdvideolist_clear(&g_umdlist);
-	get_umdvideo(&g_umdlist, "ms0:/ISO/VIDEO");
-	get_umdvideo(&g_umdlist, "ef0:/ISO/VIDEO");
-	kuKernelGetUmdFile(umdvideo_path, sizeof(umdvideo_path));
+	if(!IS_VITA_ADR(ark_config)) {
+		umdvideolist_init(&g_umdlist);
+		umdvideolist_clear(&g_umdlist);
+		get_umdvideo(&g_umdlist, "ms0:/ISO/VIDEO");
+		get_umdvideo(&g_umdlist, "ef0:/ISO/VIDEO");
+		kuKernelGetUmdFile(umdvideo_path, sizeof(umdvideo_path));
+	
 
 	if(umdvideo_path[0] == '\0') {
 		umdvideo_idx = 0;
@@ -858,8 +1130,10 @@ int TSRThread(SceSize args, void *argp)
 			strcpy(umdvideo_path, g_messages[MSG_NONE]);
 		}
 	}
+	}
 
 	scePaf_memcpy(&cnf_old, &cnf, sizeof(SEConfig));
+	scePaf_memcpy(&old_config, &config, sizeof(t_conf));
 
 resume:
 	while(stop_flag == 0) {
@@ -874,20 +1148,16 @@ resume:
 		button_func();
 	}
 
-	if(scePaf_memcmp(&cnf_old, &cnf, sizeof(SEConfig))){
-		vctrlVSHUpdateConfig(&cnf);
-	}
+	checkConfig();
 
 	if (stop_flag ==2) {
 		scePowerRequestColdReset(0);
 	} else if (stop_flag ==3) {
 		scePowerRequestStandby();
 	} else if (stop_flag ==4) {
-		sctrlKernelExitVSH(NULL);
+		reset_vsh = 1;
 	} else if (stop_flag == 5) {
 		scePowerRequestSuspend();
-	} else if (stop_flag == 6) {
-		launch_umdvideo_mount();
 	} else if (stop_flag == 7) {
 		exec_custom_launcher();
 	} else if (stop_flag == 8) {
@@ -904,11 +1174,13 @@ resume:
 
 			subbutton_func();
 		}
+		checkConfig();
 	}
 
-	if ( sub_stop_flag == 6)
+	if ( sub_stop_flag == 6) {
+		if(IS_VITA_ADR(ark_config)) return;
 		launch_umdvideo_mount();
-	else if (sub_stop_flag == 9)
+	} else if (sub_stop_flag == 9)
 		convert_battery();
 	else if (sub_stop_flag == 10)
 		delete_hibernation();
@@ -918,8 +1190,10 @@ resume:
 		swap_buttons();
 	else if (sub_stop_flag == 13)
 		import_classic_plugins();
-	else if (sub_stop_flag == 14)
+	else if (sub_stop_flag == 14){
+		checkConfig();
 		exec_random_game();
+	}
 	else if(sub_stop_flag == 1 ) {
 		stop_flag = 0;
 		menu_mode = 0;
@@ -927,21 +1201,20 @@ resume:
 		submenu_mode = 0;
 		goto resume;
 	}
-		
 
+	checkConfig();
 
-	config.vsh_bg_color = cnf.vsh_bg_colors;
-	config.vsh_fg_color = cnf.vsh_fg_colors;
-	saveConfig();
-
-	vctrlVSHUpdateConfig(&cnf);
-
-	umdvideolist_clear(&g_umdlist);
+	if(!IS_VITA_ADR(ark_config))
+		umdvideolist_clear(&g_umdlist);
 	clear_language();
 	vpl_finish();
 
 	vctrlVSHExitVSHMenu(&cnf, NULL, 0);
 	release_font();
+
+	if (reset_vsh){
+		sctrlKernelExitVSH(NULL);
+	}
 
 	return sceKernelExitDeleteThread(0);
 }
