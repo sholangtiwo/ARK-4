@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include <vector>
 #include <malloc.h>
-#include "systemctrl.h"
-#include "systemctrl_se.h"
+#include <systemctrl.h>
+#include <systemctrl_se.h>
 #include "common.h"
 #include "controller.h"
 #include "gfx.h"
@@ -59,6 +59,8 @@ class Entry{
     private:
 
         void gameBoot();
+        void animAppear();
+        void animDisappear();
 
     protected:
 
@@ -93,7 +95,8 @@ class Entry{
         void* getSnd();
         int getSndSize();
         
-        void freeIcon();
+        void setIcon(Image* icon){ this->icon0 = icon; };
+        virtual void freeIcon();
 
         virtual SfoInfo getSfoInfo(){
             SfoInfo info;
@@ -103,13 +106,14 @@ class Entry{
         };
         
         virtual void loadIcon()=0;
-        virtual void getTempData1()=0;
-        virtual void getTempData2()=0;
+        virtual void loadPics()=0;
+        virtual void loadAVMedia()=0;
         
         void freeTempData();
         
         void drawBG();
         
+        bool pmfPrompt();
         void execute();
         
         virtual char* getType()=0;

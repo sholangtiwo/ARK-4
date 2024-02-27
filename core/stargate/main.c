@@ -31,28 +31,24 @@
 #include "loadmodule_patch.h"
 #include "nodrm_patch.h"
 
-PSP_MODULE_INFO("Stargate", 0x1007, 1, 0);
+PSP_MODULE_INFO("Stargate", 0x1007, 1, 5);
 PSP_MAIN_THREAD_ATTR(0);
 
 // Previous Module Start Handler
 STMOD_HANDLER previous;
 
+
 // Module Start Handler
 void stargateSyspatchModuleOnStart(SceModule2 * mod)
 {
+    static int booted = 1;
 
-    if (strcmp(mod->modname, "tekken") == 0) {
-        hookImportByNID(mod, "scePower", 0x34F9C463, 222); // scePowerGetPllClockFrequencyInt
-	}
+    applyFixesByModule(mod);
 
-    else if (strcmp(mod->modname, "ATVPRO") == 0){
-        hookImportByNID(mod, "scePower", 0x843FBF43, 0);   // scePowerSetCpuClockFrequency
-        hookImportByNID(mod, "scePower", 0xFDB5BFE9, 222); // scePowerGetCpuClockFrequencyInt
-        hookImportByNID(mod, "scePower", 0xBD681969, 111); // scePowerGetBusClockFrequencyInt
-    }
-    
-    else if (strcasecmp(mod->modname, "DJMAX") == 0) {
-        hookImportByNID(mod, "IoFileMgrForUser", 0xE3EB004C, 0);
+    // Boot Complete Action not done yet
+    if (strcmp(mod->modname, "sceKernelLibrary") == 0)
+    {
+        applyFixesByGameId();
     }
 
     // Call Previous Module Start Handler

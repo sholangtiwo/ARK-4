@@ -1,0 +1,25 @@
+Mise à jour ARK-4
+Paramètres d'ARK-4
+Gestionnaire de plugins
+Lanceur personnalisé
+Recharge par USB
+Overclock
+Économie d'énergie
+Mode énergétique équilibré
+Autoboot du Launcher alternatif
+Mode Pause de la PSP Go
+Forcer le mode mémoire étendue
+Accélérateur Memory Stick
+Cache Inferno
+Support des anciens plugins sur PSP Go
+Transitions Sony dans le XMB
+Masquer PIC0 et PIC1
+Empêcher la suppression de l`hibernation sur la PSP Go
+Masquer l'adresse MAC
+Masquer DLC
+Éteindre les LED
+Désactiver le lecteur UMD
+Désactiver le stick analogique
+Indicateurs d'assurance qualité
+Application personnalisée
+PSP Overclock

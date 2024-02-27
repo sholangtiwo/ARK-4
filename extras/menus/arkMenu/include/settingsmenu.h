@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     settings_entry** settings_entries;
     int max_options;
+    int changed;
 } SettingsTable;
 
 class SettingsMenu : public SystemEntry{
@@ -42,12 +43,19 @@ class SettingsMenu : public SystemEntry{
         
         int icon;
 
-        void (*callback)();
+        TextScroll scroll;
+        TextScroll scroll2;
+
+        void (*save_callback)();
+        void (*open_callback)();
+        void (*close_callback)();
         
     public:
     
         SettingsMenu(SettingsTable* table, void (*callback)(), bool shorten_paths, bool show_all_opts, bool show_info);
         ~SettingsMenu();
+
+        void setCallbacks(void (*save_callback)(), void (*open_callback)(), void (*close_callback)());
     
         void setCustomText(string text[], int n);
         void unsetCustomText();

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "globals.h"
-#include "systemctrl.h"
+#include <systemctrl.h>
 #include "sysmem.h"
 
 void unlockVitaMemory(){
@@ -34,8 +34,8 @@ void unlockVitaMemory(){
     }
 
 
-    u32 kernel_size = 0; //VITA_EXTRA_RAM_SIZE - extra_user_ram; // p11 size
-    u32 user_size = USER_SIZE + VITA_EXTRA_RAM_SIZE; // new p2 size
+    u32 kernel_size = 0; // EXTRA_RAM_SIZE - extra_user_ram; // p11 size
+    u32 user_size = USER_SIZE + VITA_FLASH_SIZE; // new p2 size
 
     // modify p2
     partition = GetPartition(PSP_MEMORY_PARTITION_USER);

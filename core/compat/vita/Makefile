@@ -16,9 +16,9 @@ C_OBJS =    \
 	vitaflash.o   \
 	popspatch.o    \
 	filesystem.o    \
-	$(ARKROOT)/common/utils/patches.o \
+	$(ARKROOT)/libs/libsploit/patches.o \
+	$(ARKROOT)/core/compat/psp/cwpatch.o \
 	$(ARKROOT)/core/systemctrl/src/dummy.o \
-	$(ARKROOT)/core/systemctrl/src/gameinfo.o \
 		
 OBJS = \
 	$(C_OBJS) imports.o
@@ -40,7 +40,7 @@ USE_KERNEL_LIBS=1
 
 LIBDIR = $(ARKROOT)/libs
 LDFLAGS =  -nostartfiles
-LIBS = -lpspsemaphore -lpspsystemctrl_kernel -lcolordebugger
+LIBS = -lpspsystemctrl_kernel
 
 PSP_FW_VERSION = 660
 

@@ -27,6 +27,8 @@ enum{
 class GameManager : public SystemEntry{
 
     private:
+
+        GameManager();
     
         /* Array of game menus */
         Menu* categories[MAX_CATEGORIES];
@@ -77,14 +79,14 @@ class GameManager : public SystemEntry{
         
         void execApp();
         void extractHomebrew();
-        bool pmfPrompt();
         void gameOptionsMenu();
         void startBoot();
         
     public:
     
-        GameManager();
         ~GameManager();
+
+        static GameManager* getInstance();
         
         /* thread to load icon0 in the background */
         static int loadIcons(SceSize _args, void *_argp);
@@ -121,11 +123,15 @@ class GameManager : public SystemEntry{
         string getInfo();
         
         string getName(){
-            return "Game";
+            return "Games";
         }
 
         void drawInfo(){
-            common::printText(5, 13, this->getInfo().c_str(), LITEGRAY, SIZE_MEDIUM, 0, 1);
+            static TextScroll scroll;
+            string info = getInfo();
+            bool is_entry_info = (getEntry() != NULL && info == getEntry()->getName());
+            bool translate = ( !is_entry_info || info == "Recovery Menu" || info == "UMD Drive" );
+            common::printText(5, 13, info.c_str(), LITEGRAY, SIZE_MEDIUM, 0, &scroll, translate);
         }
         
         /* Control the icon threads */

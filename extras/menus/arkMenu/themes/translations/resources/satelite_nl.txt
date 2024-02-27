@@ -1,0 +1,88 @@
+Standaard
+Japan
+Amerika
+Europa
+Korea
+Verenigd Koninkrijk
+Latijns-Amerika
+Australi‰
+Hong Kong
+Taiwan
+Rusland
+China
+Debug I
+Debug II
+Uit
+Aan
+Normaal
+Wisselen
+X -> O
+O -> X
+USB APPARAAT
+USB ENKEL-LEZEN
+ISO VIDEO MOUNT
+FG KLEUREN
+BG KLEUREN
+LETTERTYPE
+MENU-ONTWERP
+HOOFDMENU
+BATTERIJ MOD
+X/O WISSELEN
+VSH-REGIO
+UMD-REGIO
+KLASSIEKE PLUGINS IMPORTEREN
+FLASH EN WMA ACTIVEREN
+SLAAPSTAND VERWIJDEREN
+WILLEKEURIGE ISO OPSTARTEN
+TERUGGAAN
+GEEN SLAAPSTAND
+Normaal -> Pandora
+Pandora -> Normaal
+VSH-MENU
+GEAVANCEERD VSH-MENU
+HERSTELMENU ->
+APPARAAT AFSLUITEN
+APPARAAT SLAPEN
+APPARAAT HERSTARTEN
+VSH HERSTARTEN
+VERLATEN
+Niet-ondersteund
+Adrenaline USB
+Flash
+UMD-schijf
+Interne opslag
+Memory Stick
+Geen
+Klassiek
+Eenvoudig
+Geavanceerd
+Nieuw
+Willekeurig
+Rood
+Lichtrood
+Oranje
+Lichtoranje
+Geel
+Lichtgeel
+Groen
+Lichtgroen
+Blauw
+Lichtblauw
+Indigo
+Lichtindigo
+Violet
+Lichtviolet
+Roze
+Lichtroze
+Paars
+Lichtpaars
+Teal
+Licht teal
+Aqua
+Licht aqua
+Grijs
+Lichtgrijs
+Zwart
+Lichtzwart
+Wit
+Lichtwit

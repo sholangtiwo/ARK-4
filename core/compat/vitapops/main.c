@@ -6,9 +6,11 @@
 #include <pspdisplay_kernel.h>
 #include <pspsysmem_kernel.h>
 #include <systemctrl.h>
+#include <systemctrl_se.h>
 #include <systemctrl_private.h>
 #include <pspiofilemgr.h>
 #include <pspgu.h>
+#include <pspsysevent.h>
 #include <functions.h>
 #include "popsdisplay.h"
 
@@ -20,18 +22,11 @@ PSP_MODULE_INFO("ARKCompatLayer", 0x3007, 1, 0);
 STMOD_HANDLER previous = NULL;
 
 ARKConfig* ark_config = NULL;
+SEConfig* se_config = NULL;
 
 extern void ARKVitaPopsOnModuleStart(SceModule2* mod);
-
-// Flush Instruction and Data Cache
-void flushCache()
-{
-    // Flush Instruction Cache
-    sceKernelIcacheInvalidateAll();
-    
-    // Flush Data Cache
-    sceKernelDcacheWritebackInvalidateAll();
-}
+extern int (*prev_start)(int modid, SceSize argsize, void * argp, int * modstatus, SceKernelSMOption * opt);
+extern int StartModuleHandler(int modid, SceSize argsize, void * argp, int * modstatus, SceKernelSMOption * opt);
 
 void* sctrlARKSetPSXVramHandler(void (*handler)(u32* psp_vram, u16* ps1_vram)){
     int k1 = pspSdkSetK1(0);
@@ -41,6 +36,7 @@ void* sctrlARKSetPSXVramHandler(void (*handler)(u32* psp_vram, u16* ps1_vram)){
 }
 
 static void processArkConfig(){
+    se_config = sctrlSEGetConfig(NULL);
     ark_config = sctrlHENGetArkConfig(NULL);
     if (ark_config->exec_mode == DEV_UNK){
         ark_config->exec_mode = PSV_POPS; // assume running on PS Vita Pops
@@ -50,28 +46,28 @@ static void processArkConfig(){
     }
 }
 
-#ifdef DEBUG
-static void pops_vram_handler(u32 vram){
-    SoftRelocateVram(vram, NULL);
-}
-#endif
-
 // Boot Time Entry Point
 int module_start(SceSize args, void * argp)
 {
+    
+    // copy configuration
+    processArkConfig();
+
+    if (ark_config->exec_mode != PSV_POPS){
+        return 1;
+    }
+
+    #ifdef DEBUG
+    _sw(0x44000000, 0xBC800100);
+    setScreenHandler(&copyPSPVram);
+    initVitaPopsVram();
+    colorDebug(0xFF00);
+    #endif
 
     // set rebootex for VitaPOPS
     sctrlHENSetRebootexOverride(rebootbuffer_vitapops);
 
-
-    #ifdef DEBUG
-    // set screen handler for color debugging
-    setScreenHandler(&pops_vram_handler);
-    #endif
-    
-    
-    // copy configuration
-    processArkConfig();
+    //initFileSystem();
 
     // Register Module Start Handler
     previous = sctrlHENSetStartModuleHandler(ARKVitaPopsOnModuleStart);

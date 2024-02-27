@@ -29,7 +29,7 @@
 
 extern unsigned char g_icon_png[6108];
 
-PSP_MODULE_INFO("PROPopcornManager", 0x1007, 1, 1);
+PSP_MODULE_INFO("PROPopcornManager", 0x1007, 1, 2);
 
 static STMOD_HANDLER g_previous = NULL;
 
@@ -38,8 +38,6 @@ static unsigned int g_pspFwVersion;
 static int g_isCustomPBP;
 static int g_keysBinFound;
 static SceUID g_plain_doc_fd = -1;
-
-static char g_DiscID[32];
 
 #define PGD_ID "XX0000-XXXX00000_00-XXXXXXXXXX000XXX"
 #define ACT_DAT "flash2:/act.dat"
@@ -546,41 +544,6 @@ static int myIoClose(SceUID fd)
     return ret;
 }
 
-static int _sceDrmBBCipherUpdate(void *ckey, unsigned char *data, int size)
-{
-    return 0;
-}
-
-static int _sceDrmBBCipherInit(void *ckey, int type, int mode, unsigned char *header_key, unsigned char *version_key, unsigned int seed)
-{
-    return 0;
-}
-
-static int _sceDrmBBMacInit(void *mkey, int type)
-{
-    return 0;
-}
-
-static int _sceDrmBBMacUpdate(void *mkey, unsigned char *buf, int size)
-{
-    return 0;
-}
-
-static int _sceDrmBBCipherFinal(void *ckey)
-{
-    return 0;
-}
-
-static int _sceDrmBBMacFinal(void *mkey, unsigned char *buf, unsigned char *vkey)
-{
-    return 0;
-}
-
-static int _sceDrmBBMacFinal2(void *mkey, unsigned char *out, unsigned char *vkey)
-{
-    return 0;
-}
-
 static struct FunctionHook g_ioHooks[] = {
     { 0x109F50BC, &myIoOpen, },
     { 0x27EB27B8, &myIoLseek, },
@@ -592,13 +555,13 @@ static struct FunctionHook g_ioHooks[] = {
 };
 
 static struct FunctionHook g_amctrlHooks[] = {
-    { 0x1CCB66D2, &_sceDrmBBCipherInit, },
-    { 0x0785C974, &_sceDrmBBCipherUpdate, },
-    { 0x9951C50F, &_sceDrmBBCipherFinal, },
-    { 0x525B8218, &_sceDrmBBMacInit, },
-    { 0x58163FBE, &_sceDrmBBMacUpdate, },
-    { 0xEF95A213, &_sceDrmBBMacFinal, },
-    { 0xF5186D8E, &_sceDrmBBMacFinal2, },
+    { 0x1CCB66D2, NULL},
+    { 0x0785C974, NULL},
+    { 0x9951C50F, NULL},
+    { 0x525B8218, NULL},
+    { 0x58163FBE, NULL},
+    { 0xEF95A213, NULL},
+    { 0xF5186D8E, NULL},
 };
 
 static int (*sceNpDrmGetVersionKey)(unsigned char * key, unsigned char * act, unsigned char * rif, unsigned int flags);
@@ -699,45 +662,36 @@ void patchPopsMgr(void)
     
     sceNpDrmGetVersionKey = (void*)sctrlHENFindFunction("scePspNpDrm_Driver", "scePspNpDrm_driver", 0x0F9547E6);
     scePspNpDrm_driver_9A34AC9F = (void*)sctrlHENFindFunction("scePspNpDrm_Driver", "scePspNpDrm_driver", 0x9A34AC9F);
+    hookImportByNID(mod, "scePspNpDrm_driver", 0x0F9547E6, _sceNpDrmGetVersionKey);
+    hookImportByNID(mod, "scePspNpDrm_driver", 0x9A34AC9F, _scePspNpDrm_driver_9A34AC9F);
 
     for(i=0; i<NELEMS(g_ioHooks); ++i)
     {
         hookImportByNID(mod, "IoFileMgrForKernel", g_ioHooks[i].nid, g_ioHooks[i].fp);
     }
-    // find getRifPath
-    for (u32 addr = text_addr; addr<text_addr+mod->text_size && _getRifPath==NULL; addr+=4){
-        u32 data = _lw(addr);
-        if (data == 0x2C830001 && _lw(addr+4) == 0x2CA70001){
-            _getRifPath = (void*)(addr-4);
-            break;
-        }
-    }
-    // patch popsman
-    int patches = 5;
-    for (u32 addr = text_addr; addr<text_addr+mod->text_size && patches; addr+=4){
-        u32 data = _lw(addr);
-        if (data == JAL(_getRifPath)){
-            _sw(JAL(&getRifPatch), addr);
-            patches--;
-        }
-        else if (data == 0x0000000D){
-            _sw(NOP, addr); // remove the check in scePopsManLoadModule that only allows loading module below the FW 3.XX
-            patches--;
-        }
-        else if (data == JUMP(scePspNpDrm_driver_9A34AC9F)){
-            _sw(JUMP(_scePspNpDrm_driver_9A34AC9F), addr); // hook scePspNpDrm_driver_9A34AC9F call
-            patches--;
-        }
-        else if (data == JUMP(sceNpDrmGetVersionKey)){
-            _sw(JUMP(_sceNpDrmGetVersionKey), addr); // hook sceNpDrmGetVersionKey call
-            patches--;
-        }
-    }
+
     if (g_isCustomPBP)
     {
         for(i=0; i<NELEMS(g_amctrlHooks); ++i)
         {
             hookImportByNID(mod, "sceAmctrl_driver", g_amctrlHooks[i].nid, g_amctrlHooks[i].fp);
+        }
+    }
+
+    // patch popsman
+    int patches = 3;
+    for (u32 addr = text_addr; addr<text_addr+mod->text_size && patches; addr+=4){
+        u32 data = _lw(addr);
+        if (data == 0x34C20016){
+            _getRifPath = (void*)(addr-32); // found getRifPath
+        }
+        else if (data == JAL(_getRifPath)){
+            _sw(JAL(&getRifPatch), addr); // redirect calls to getRifPath
+            patches--;
+        }
+        else if (data == 0x0000000D){
+            _sw(NOP, addr); // remove the check in scePopsManLoadModule that only allows loading module below the FW 3.XX
+            patches--;
         }
     }
 
@@ -869,7 +823,7 @@ static void setupPsxFwVersion(unsigned int fw_version)
 
 static int getIcon0Status(void)
 {
-    unsigned int icon0_offset = 0;
+    unsigned int icon0_offset = 0, icon0_size = 0;
     int result = ICON0_MISSING;
     SceUID fd = -1;;
     const char *filename;
@@ -880,52 +834,23 @@ static int getIcon0Status(void)
 
     if(filename == NULL)
     {
-        goto exit;
+        return ICON0_MISSING;
     }
     
     fd = sceIoOpen(filename, PSP_O_RDONLY, 0777);
 
     if(fd < 0)
     {
-        #ifdef DEBUG
-        printk("%s: sceIoOpen %s -> 0x%08X\r\n", __func__, filename, fd);
-        #endif
-        goto exit;
+        return ICON0_MISSING;
     }
     
     sceIoRead(fd, header, 40);
-    icon0_offset = *(unsigned int*)(header+0x0c);
-    sceIoLseek32(fd, icon0_offset, PSP_SEEK_SET);
-    sceIoRead(fd, header, 40);
+    sceIoClose(fd);
 
-    if(*(unsigned int*)(header+4) == 0xA1A0A0D)
-    {
-        if ( *(unsigned int*)(header+0xc) == 0x52444849 && // IHDR
-                *(unsigned int*)(header+0x10) == 0x50000000 && // 
-                *(unsigned int*)(header+0x14) == *(unsigned int*)(header+0x10)
-           )
-        {
-            result = ICON0_OK;
-        }
-        else
-        {
-            result = ICON0_CORRUPTED;
-        }
-    }
-    else
-    {
-        result = ICON0_MISSING;
-    }
-    #ifdef DEBUG
-    printk("%s: PNG file status -> %d\r\n", __func__, result);
-    #endif
-exit:
-    if(fd >= 0)
-    {
-        sceIoClose(fd);
-    }
+    icon0_offset = *(unsigned int*)(header+12);
+    icon0_size =  *(unsigned int*)(header+16) - icon0_offset;
 
-    return result;
+    return (icon0_size)? ICON0_OK : ICON0_MISSING;
 }
 
 static int getKeysBinPath(char *keypath, unsigned int size)
@@ -1115,6 +1040,12 @@ static void patchPops(SceModule2 *mod)
             _sw(0x24050000 | (sizeof(g_icon_png) & 0xFFFF), addr); // patch icon0 size
         else if (data == 0x24050080 && _lw(addr+24) == 0x24030001)
             _sw(0x24020001, addr+8); // Patch Manual Name Check
+        else if ((data == 0x14C00014 && _lw(addr + 4) == 0x24E2FFFF) ||
+            (data == 0x14A00014 && _lw(addr + 4) == 0x24C2FFFF))
+        {   // Fix index length (enable CDDA)
+            _sh(0x1000, addr + 2);
+            _sh(0, addr + 4);
+        }
     }
 
     if(g_isCustomPBP){
@@ -1132,13 +1063,15 @@ int module_start(SceSize args, void* argp)
 {
     #ifdef DEBUG
     printk("popcorn: init_file = %s\r\n", sceKernelInitFileName());
-    #endif    
+
+    char g_DiscID[32];
     u16 paramType = 0;
     u32 paramLength = sizeof(g_DiscID);
     sctrlGetInitPARAM("DISC_ID", &paramType, &paramLength, g_DiscID);
-    #ifdef DEBUG
+    
     printk("pops disc id: %s\r\n", g_DiscID);
     #endif
+
     g_pspFwVersion = sceKernelDevkitVersion();
     
     getKeys();

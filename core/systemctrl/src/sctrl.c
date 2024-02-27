@@ -38,8 +38,6 @@
 #include "imports.h"
 #include "sysmem.h"
 
-#define PSP_INIT_APITYPE_EF2 0x152
-
 // Load Execute Module via Kernel Internal Function
 int sctrlKernelLoadExecVSHWithApitype(int apitype, const char * file, struct SceKernelLoadExecVSHParam * param)
 {
@@ -77,6 +75,9 @@ int sctrlKernelLoadExecVSHMs4(const char *file, struct SceKernelLoadExecVSHParam
 }
 
 int sctrlKernelLoadExecVSHDisc(const char *file, struct SceKernelLoadExecVSHParam *param) {
+    int k1 = pspSdkSetK1(0);
+    readGameIdFromDisc(rebootex_config.game_id);
+    pspSdkSetK1(k1);
 	return sctrlKernelLoadExecVSHWithApitype(PSP_INIT_APITYPE_DISC, file, param);
 }
 
@@ -86,6 +87,8 @@ int sctrlKernelLoadExecVSHDiscUpdater(const char *file, struct SceKernelLoadExec
 
 int sctrlKernelLoadExecVSHEf2(const char *file, struct SceKernelLoadExecVSHParam *param)
 {
+    // Missing from SDK
+    #define PSP_INIT_APITYPE_EF2 0x152
     return sctrlKernelLoadExecVSHWithApitype(PSP_INIT_APITYPE_EF2, file, param);
 }
 
@@ -112,8 +115,13 @@ int sctrlKernelSetUserLevel(int level)
     
     u32 _sceKernelReleaseThreadEventHandler = sctrlHENFindFunction("sceThreadManager", "ThreadManForKernel", 0x72F3C145);
     
+    u32 addr = _sceKernelReleaseThreadEventHandler + 0x4;
+    do {
+        addr += 4;
+    } while ((_lw(addr)&0xFFF00000) != 0x24B00000);
+
     u32 threadman_userlevel_struct = _lh(_sceKernelReleaseThreadEventHandler + 0x4)<<16;
-    threadman_userlevel_struct += (short)_lh(_sceKernelReleaseThreadEventHandler + 0x18);
+    threadman_userlevel_struct += (short)_lh(addr);
     
     
     // Set User Level

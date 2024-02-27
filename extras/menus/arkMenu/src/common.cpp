@@ -6,14 +6,25 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "controller.h"
-#include "systemctrl.h"
+#include <systemctrl.h>
+#include <pspiofilemgr.h>
+#include <kubridge.h>
 #include "animations.h"
+#include "system_mgr.h"
+#include "lang.h"
+#include "browser.h"
 
 #define RESOURCES_LOAD_PLACE YA2D_PLACE_VRAM
 
 using namespace common;
 
-extern "C" int kuKernelGetModel();
+bool common::is_recovery = false;
+
+extern "C"{
+    int kuKernelGetModel();
+}
+
+struct tm today;
 
 static ARKConfig ark_config = {0};
 static Image* images[MAX_IMAGES];
@@ -21,14 +32,16 @@ static Image* images[MAX_IMAGES];
 static Image* checkbox[2];
 static Image* icons[MAX_FILE_TYPES];
 
-static intraFont* font;
-static MP3* sound_mp3;
+extern float text_size;
+extern int altFontId;
+extern intraFont* altFont;
+extern intraFont* font;
+static MP3* sound_mp3 = NULL;
 static int argc;
 static char **argv;
-static float scrollX = 0.f;
-static float scrollY = 0.f;
-static float scrollXTmp = 0.f;
 static int currentFont = 0;
+static int currentLang = 0;
+static int currentApp = 0; // Games
 /* Instance of the animations that are drawn on the menu */
 static Anim* animations[ANIM_COUNT];
 
@@ -50,17 +63,46 @@ char* fonts[] = {
     "flash0:/font/ltn7.pgf",
     "flash0:/font/ltn8.pgf",
     "flash0:/font/ltn9.pgf",
-    "flash0:/font/ltn19.pgf",
+    "flash0:/font/ltn10.pgf",
     "flash0:/font/ltn11.pgf",
     "flash0:/font/ltn12.pgf",
     "flash0:/font/ltn13.pgf",
     "flash0:/font/ltn14.pgf",
     "flash0:/font/ltn15.pgf",
-    "flash0:/font/jpn0.pgf",
-    "flash0:/font/kr0.pgf"
+    //"flash0:/font/jpn0.pgf",
+    //"flash0:/font/kr0.pgf"
+};
+
+static char* lang_files[] = {
+    "lang_en.json",
+    "lang_es.json",
+    "lang_de.json",
+    "lang_fr.json",
+    "lang_pt.json",
+    "lang_it.json",
+    "lang_nl.json",
+    "lang_ru.json",
+    "lang_ukr.json",
+    "lang_ro.json",
+    "lang_lat.json",
+    "lang_jp.json",
+    "lang_ko.json",
+    "lang_cht.json",
+    "lang_chs.json",
+    "lang_pol.json",
+    "lang_latgr.json"
+    //"lang_grk.json",
+    //"lang_thai.json",
 };
 
 static t_conf config;
+
+static volatile bool do_loading_thread = false;
+static volatile SceUID load_thread_id = -1;
+
+static void dummyMissingHandler(const char* filename){
+
+}
 
 void setArgs(int ac, char** av){
     argc = ac;
@@ -73,9 +115,12 @@ void loadConfig(){
         resetConf();
         return;
     }
+    memset(&config, 0, sizeof(t_conf));
     fseek(fp, 0, SEEK_SET);
     fread(&config, 1, sizeof(t_conf), fp);
     fclose(fp);
+    if (today.tm_mday == 1 && today.tm_mon == 3)
+        config.language = 10;
 }
 
 ARKConfig* common::getArkConfig(){
@@ -92,17 +137,71 @@ struct tm common::getDateTime(){
     return ts;
 }
 
+static void loadFont(){
+    unsigned offset=0, size=0;
+    if (config.font == 0){
+        offset = findPkgOffset(fonts[0], &size, "LANG.ARK", &dummyMissingHandler);
+        if (offset && size){
+            fonts[0] = "LANG.ARK"; // found font in lang package
+        }
+        else if ((offset = findPkgOffset(fonts[0], &size, "THEME.ARK", &dummyMissingHandler)) != 0 ){
+            fonts[0] = "THEME.ARK"; // found font in theme package
+        }
+        else if (!fileExists(fonts[0])){
+            if (altFont){
+                intraFont* aux = font;
+                if (aux) intraFontUnload(aux);
+                font = altFont;
+                config.font = altFontId;
+                return;
+            }
+            else{
+                config.font = 1;
+            }
+        }
+    }
+
+    // offload current font
+    intraFont* aux = font;
+    if (aux) intraFontUnload(aux);
+    // load new font
+    if (config.font == 0 && !altFont) altFont = intraFontLoadEx(fonts[1], INTRAFONT_CACHE_ALL, 0, 0);
+    font = intraFontLoadEx(fonts[config.font], INTRAFONT_CACHE_ALL, offset, size);
+    intraFontSetEncoding(font, INTRAFONT_STRING_UTF8);
+    // set alt font
+    if (altFont) intraFontSetAltFont(font, altFont);
+    currentFont = config.font;
+}
+
 void common::saveConf(){
 
-    if (currentFont != config.font){
-        if (!fileExists(fonts[config.font]))
-            config.font = 1;
-    
-        intraFont* aux = font;
-        font = NULL;
-        intraFontUnload(aux);
-        font = intraFontLoad(fonts[config.font], 0);
+    SystemMgr::pauseDraw();
+
+    // reload language
+    if (currentLang != config.language){
+        if (!Translations::loadLanguage(lang_files[config.language])){
+            config.language = 0;
+        }
+        currentLang = config.language;
     }
+
+    // reload font
+    if (currentFont != config.font || font == NULL){
+        loadFont();
+    }
+
+    // swap apps
+    if (!is_recovery && currentApp != config.main_menu){
+        SystemEntry* ent0 = SystemMgr::getSystemEntry(0);
+        SystemEntry* ent1 = SystemMgr::getSystemEntry(1);
+        SystemMgr::setSystemEntry(ent1, 0);
+        SystemMgr::setSystemEntry(ent0, 1);
+        currentApp = config.main_menu;
+    }
+
+    SystemMgr::resumeDraw();
+
+    strcpy(config.browser_dir, Browser::getInstance()->getCWD());
     
     FILE* fp = fopen(CONFIG_PATH, "wb");
     fwrite(&config, 1, sizeof(t_conf), fp);
@@ -128,27 +227,51 @@ void common::resetConf(){
     config.sort_entries = 1;
     config.show_recovery = 1;
     config.show_fps = 0;
-    config.text_glow = 1;
+    config.text_glow = 3;
     config.screensaver = 2;
     config.redirect_ms0 = 0;
     config.startbtn = 0;
     config.menusize = 0;
+    config.show_path = 0;
+    config.browser_icon0 = 1;
 }
 
-void common::launchRecovery(){
-    struct SceKernelLoadExecVSHParam param;
-    char cwd[128];
-    string recovery_path = string(ark_config.arkpath) + "RECOVERY.PBP";
-    
-    memset(&param, 0, sizeof(param));
-    
-    param.args = strlen(recovery_path.c_str()) + 1;
-    param.argp = (char*)recovery_path.c_str();
-    param.key = "game";
-    sctrlKernelLoadExecVSHWithApitype(0x141, recovery_path.c_str(), &param);
+void common::launchRecovery(const char* path){
+    string fakent = string(common::getArkConfig()->arkpath) + VBOOT_PBP;
+    if (fakent != path && common::fileExists(path)){
+        struct SceKernelLoadExecVSHParam param;
+        
+        memset(&param, 0, sizeof(param));
+        
+        int runlevel = HOMEBREW_RUNLEVEL;
+        
+        param.args = strlen(path) + 1;
+        param.argp = (char*)path;
+        param.key = "game";
+        sctrlKernelLoadExecVSHWithApitype(runlevel, path, &param);
+    }
+    else {
+        string recovery_prx = string(common::getArkConfig()->arkpath) + RECOVERY_PRX;
+        SceUID modid = kuKernelLoadModule(recovery_prx.c_str(), 0, NULL);
+        if (modid >= 0){
+            int res = sceKernelStartModule(modid, recovery_prx.size() + 1, (void*)recovery_prx.c_str(), NULL, NULL);
+            if (res >= 0){
+                while (1){sceKernelDelayThread(1000000);}; // wait for recovery to finish
+            }
+        }
+    }
 }
 
 static void missingFileHandler(const char* filename){
+
+    if (load_thread_id >= 0){
+        stopLoadingThread();
+    }
+
+    if (!font){
+        font = intraFontLoad(fonts[1], INTRAFONT_CACHE_ASCII);
+        intraFontSetEncoding(font, INTRAFONT_STRING_UTF8);
+    }
     
     static char msg[64];
     snprintf(msg, 64, "Error, missing file %s", filename);
@@ -164,16 +287,24 @@ static void missingFileHandler(const char* filename){
         common::flipScreen();
     
         pad.update();
-        if (pad.cross() || pad.circle())
-            common::launchRecovery();
+        if (pad.cross() || pad.circle()){
+            string recovery_path = string(ark_config.arkpath) + ARK_RECOVERY;
+            common::launchRecovery(recovery_path.c_str());
+        }
         else if (pad.triangle())
-            sceKernelExitGame();
+            sctrlKernelExitVSH(NULL);
     }
 }
 
-SceOff common::findPkgOffset(const char* filename, unsigned* size){
+SceOff common::findPkgOffset(const char* filename, unsigned* size, const char* pkgpath, void (*missinghandler)(const char*)){
     
-    FILE* pkg = fopen(theme_path.c_str(), "rb");
+    if (pkgpath == NULL)
+        pkgpath = theme_path.c_str();
+
+    if (missinghandler == NULL)
+        missinghandler = &missingFileHandler;
+
+    FILE* pkg = fopen(pkgpath, "rb");
     if (pkg == NULL)
         return 0;
      
@@ -194,7 +325,7 @@ SceOff common::findPkgOffset(const char* filename, unsigned* size){
         fread(&offset, 1, 4, pkg);
         if (offset == 0xFFFFFFFF){
             fclose(pkg);
-            missingFileHandler(filename);
+            missinghandler(filename);
             return 0;
         }
         unsigned namelength;
@@ -214,23 +345,27 @@ SceOff common::findPkgOffset(const char* filename, unsigned* size){
             return offset;
         }
     }
-    missingFileHandler(theme_path.c_str());
+    missinghandler(pkgpath);
     return 0;
 }
 
-void* common::readFromPKG(const char* filename, unsigned* size){
+void* common::readFromPKG(const char* filename, unsigned* size, const char* pkgpath){
 
     unsigned mySize;
     
     if (size == NULL)
         size = &mySize;
 
-    unsigned offset = findPkgOffset(filename, size);
+    if (pkgpath == NULL)
+        pkgpath = theme_path.c_str();
+
+    unsigned offset = findPkgOffset(filename, size, pkgpath, &dummyMissingHandler);
     
-    FILE* fp = fopen(theme_path.c_str(), "rb");
+    FILE* fp = fopen(pkgpath, "rb");
     
     if (offset == 0 || fp == NULL){
         fclose(fp);
+        *size = 0;
         return NULL;
     }
     
@@ -271,11 +406,9 @@ u32 common::getMagic(const char* filename, unsigned int offset){
     return magic;
 }
 
-static bool loading_theme = false;
-
-static int loading_theme_thread(SceSize argc, void* argp){
+static int loading_thread(SceSize argc, void* argp){
     float angle = 1.0;
-    while (loading_theme){
+    while (do_loading_thread){
         common::clearScreen(CLEAR_COLOR);
         images[IMAGE_BG]->draw(0, 0);
         images[IMAGE_WAITICON]->draw_rotate(
@@ -285,20 +418,36 @@ static int loading_theme_thread(SceSize argc, void* argp){
         );
         angle+=0.2;
         common::flipScreen();
+        sceKernelDelayThread(0);
     }
     sceKernelExitDeleteThread(0);
     return 0;
 }
 
-void common::loadTheme(){
-    images[IMAGE_BG] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("DEFBG.PNG"));
-    images[IMAGE_WAITICON] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("WAIT.PNG"));
-    
-    loading_theme = true;
-    SceUID loading_thread = sceKernelCreateThread("theme_thread", &loading_theme_thread, 0x10, 0x8000, PSP_THREAD_ATTR_USER|PSP_THREAD_ATTR_VFPU, NULL);
-    sceKernelStartThread(loading_thread, 0, NULL);
+void common::startLoadingThread(){
+    do_loading_thread = true;
+    load_thread_id = sceKernelCreateThread("theme_thread", &loading_thread, 0x10, 0x8000, PSP_THREAD_ATTR_USER|PSP_THREAD_ATTR_VFPU, NULL);
+    sceKernelStartThread(load_thread_id, 0, NULL);
+}
 
-    
+void common::stopLoadingThread(){
+    do_loading_thread = false;
+    sceKernelWaitThreadEnd(load_thread_id, NULL);
+    sceKernelDeleteThread(load_thread_id);
+    load_thread_id = -1;
+}
+
+void common::loadTheme(){
+	SceIoStat stat;
+	string path = string(ark_config.arkpath) + "BG.PNG";
+	images[IMAGE_BG] = (sceIoGetstat(path.c_str(), &stat) >= 0) ? new Image(path.c_str()) : new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("DEFBG.PNG"));
+    images[IMAGE_WAITICON] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("WAIT.PNG"));
+
+    images[0]->swizzle();
+    images[1]->swizzle();
+
+    startLoadingThread();
+
     images[IMAGE_LOADING] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("LOADING.PNG"));
     images[IMAGE_SPRITE] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("SPRITE.PNG"));
     images[IMAGE_NOICON] = new Image(theme_path, RESOURCES_LOAD_PLACE, findPkgOffset("NOICON.PNG"));
@@ -323,7 +472,7 @@ void common::loadTheme(){
     checkbox[1] = new Image(theme_path, YA2D_PLACE_VRAM, common::findPkgOffset("CHECK.PNG"));
     checkbox[0] = new Image(theme_path, YA2D_PLACE_VRAM, common::findPkgOffset("UNCHECK.PNG"));
     
-    for (int i=0; i<MAX_IMAGES; i++){
+    for (int i=2; i<MAX_IMAGES; i++){
         images[i]->swizzle();
         images[i]->is_system_image = true;
     }
@@ -332,15 +481,14 @@ void common::loadTheme(){
     void* mp3_buffer = readFromPKG("SOUND.MP3", &mp3_size);
     sound_mp3 = new MP3(mp3_buffer, mp3_size);
 
-    loading_theme = false;
-    sceKernelWaitThreadEnd(loading_thread, NULL);
-    sceKernelDeleteThread(loading_thread);
 }
 
 void common::loadData(int ac, char** av){
 
     argc = ac;
     argv = av;
+
+    today = common::getDateTime();
 
     psp_model = kuKernelGetModel();
 
@@ -362,12 +510,20 @@ void common::loadData(int ac, char** av){
     loadTheme();
     
     loadConfig();
-    
-    if (!fileExists(fonts[config.font]))
-        config.font = 1;
-    font = intraFontLoad(fonts[config.font], INTRAFONT_CACHE_ALL);
-    
+
     currentFont = config.font;
+    currentLang = config.language;
+    currentApp = config.main_menu;
+
+    if (config.language){
+        Translations::loadLanguage(lang_files[config.language]);
+    }
+    
+    loadFont();
+
+    if (currentFont != config.font){
+        currentFont = config.font;
+    }
     
 }
 
@@ -391,6 +547,10 @@ void common::deleteData(){
 void common::setThemePath(char* path){
     if (path == NULL) theme_path = THEME_NAME;
     else theme_path = path;
+}
+
+bool common::isFolder(SceIoDirent* dit){
+    return FIO_SO_ISDIR(dit->d_stat.st_attr) || FIO_S_ISDIR(dit->d_stat.st_mode);
 }
 
 bool common::fileExists(const std::string &path){
@@ -428,13 +588,13 @@ string common::beautifySize(u64 size){
     ostringstream txt;
 
     if (size < 1024)
-        txt<<size<<" Bytes";
+        txt<<size<<" B";
     else if (1024 < size && size < 1048576)
-        txt<<float(size)/1024.f<<" KB";
+        txt<<round(float(size*100)/1024.f)/100.f<<" KB";
     else if (1048576 < size && size < 1073741824)
-        txt<<float(size)/1048576.f<<" MB";
+        txt<<round(float(size*100)/1048576.f)/100.f<<" MB";
     else
-        txt<<float(size)/1073741824.f<<" GB";
+        txt<<round(float(size*100)/1073741824.f)/100.f<<" GB";
     return txt.str();
 }
 
@@ -474,41 +634,71 @@ void common::playMenuSound(){
     sound_mp3->play();
 }
 
-void common::printText(float x, float y, const char* text, u32 color, float size, int glow, int scroll){
+void common::printText(float x, float y, const char* text, u32 color, float size, int glow, TextScroll* scroll, int translate){
 
     if (font == NULL)
         return;
+
+    string translated = (translate)? TR(text) : text;
+    intraFont* textFont = font;
+
+    if (translated != text){
+        size *= text_size;
+    }
+    
+    if (!translate && altFont){
+        textFont = altFont;
+    }
 
     u32 secondColor = BLACK_COLOR;
     u32 arg5 = INTRAFONT_WIDTH_VAR;
     
     if (glow && config.text_glow){
+		int val = 0;
         float t = (float)((float)(clock() % CLOCKS_PER_SEC)) / ((float)CLOCKS_PER_SEC);
-        int val = (t < 0.5f) ? t*511 : (1.0f-t)*511;
+		if(config.text_glow == 1) {
+        	val = (t < 0.5f) ? t*311 : (1.0f-t)*311;
+		}
+		else if(config.text_glow == 2) {
+        	val = (t < 0.5f) ? t*411 : (1.0f-t)*411;
+		}
+		else {
+        	val = (t < 0.5f) ? t*511 : (1.0f-t)*511;
+		}
         secondColor = (0xFF<<24)+(val<<16)+(val<<8)+(val);
     }
-    if (int(scroll)){
+    if (scroll){
         arg5 = INTRAFONT_SCROLL_LEFT;
     }
     
-    intraFontSetStyle(font, size, color, secondColor, 0.f, arg5);
+    intraFontSetStyle(textFont, size, color, secondColor, 0.f, arg5);
+    if (altFont) intraFontSetStyle(altFont, size, color, secondColor, 0.f, arg5);
 
-    if (int(scroll)){
-        if (x != scrollX || y != scrollY){
-            scrollX = x;
-            scrollXTmp = x;
-            scrollY = y;
+    if (scroll){
+        if (x != scroll->x || y != scroll->y){
+            scroll->x = x;
+            scroll->tmp = x;
+            scroll->y = y;
         }
-        scrollXTmp = intraFontPrintColumn(font, scrollXTmp, y, 200, text);
+        if (scroll->w <= 0 || scroll->w >= 480) scroll->w = 200;
+        scroll->tmp = intraFontPrintColumn(textFont, scroll->tmp, y, scroll->w, translated.c_str());
     }
     else
-        intraFontPrint(font, x, y, text);
+        intraFontPrint(textFont, x, y, translated.c_str());
     
 }
 
-int common::calcTextWidth(const char* text, float size){
-    intraFontSetStyle(font, size, 0, 0, 0.f, INTRAFONT_WIDTH_VAR);
-    float w = intraFontMeasureText(font, text) + size*strlen(text);
+int common::calcTextWidth(const char* text, float size, int translate){
+    string translated = (translate)? TR(text) : text;
+    intraFont* textFont = font;
+    if (translated != text){
+        size *= text_size;
+    }
+    if (!translate && altFont){
+        textFont = altFont;
+    }
+    intraFontSetStyle(textFont, size, 0, 0, 0.f, INTRAFONT_WIDTH_VAR);
+    float w = intraFontMeasureText(textFont, translated.c_str());
     return (int)ceil(w);
 }
 

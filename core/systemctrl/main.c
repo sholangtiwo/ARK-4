@@ -29,17 +29,19 @@
 #include "exception.h"
 #include "libs/graphics/graphics.h"
 
-PSP_MODULE_INFO("SystemControl", 0x3007, 1, 0);
+PSP_MODULE_INFO("SystemControl", 0x3007, 4, 0);
 
-// default config
+// default config when none provided by the bootloader
 static ARKConfig _ark_conf = {
     .magic = ARK_CONFIG_MAGIC,
     .arkpath = DEFAULT_ARK_PATH,
     .exploit_id = {0}, // None by default
-    .exec_mode = DEV_UNK, // system files don't need to know the device, as long as the compat layer is running, it should be fine
+    .exec_mode = DEV_UNK, // set by compat layer
     .recovery = 0,
 };
 ARKConfig* ark_config = &_ark_conf;
+
+extern void copyPSPVram(u32* psp_vram);
 
 // Boot Time Entry Point
 int module_start(SceSize args, void * argp)

@@ -27,7 +27,6 @@
 // Patch mediasync.prx
 void patchMediaSync(SceModule2* mod)
 {
-    colorDebug(0xff0000);
     u32 text_addr = mod->text_addr;
     u32 top_addr = text_addr+mod->text_size;
     
@@ -61,7 +60,7 @@ void patchMediaSync(SceModule2* mod)
         else if (data == 0x24040034){
             _sw(0x00001021, addr-8); // MEDIASYNC_KD_FOLDER_PATCH
             patches--;
-        } 
+        }
     }
 }
 

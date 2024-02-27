@@ -14,9 +14,8 @@ C_OBJS =   \
 	impose_patch.o    \
 	utility_patch.o    \
 	$(ARKROOT)/core/compat/vita/vlf.o \
-	$(ARKROOT)/common/utils/patches.o   \
+	$(ARKROOT)/libs/libsploit/patches.o   \
 	$(ARKROOT)/core/systemctrl/src/dummy.o \
-	$(ARKROOT)/core/systemctrl/src/gameinfo.o \
 		
 OBJS = \
 	$(C_OBJS) imports.o

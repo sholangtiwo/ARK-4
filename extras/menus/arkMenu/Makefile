@@ -5,7 +5,7 @@ ASFLAGS = $(CFLAGS)
 ifdef DEBUG
 CFLAGS += -DDEBUG=$(DEBUG)
 endif
-INCDIR = include include/anim include/pmf include/ftp $(ARKROOT)/libs/libya2d $(ARKROOT)/libs/libintraFont $(ARKROOT)/libs/libjpeg $(ARKROOT)/common/include
+INCDIR = include include/anim include/multimedia include/ftp $(ARKROOT)/libs/libya2d $(ARKROOT)/libs/libintraFont $(ARKROOT)/libs/libjpeg $(ARKROOT)/common/include
 LIBDIR = $(ARKROOT)/libs
 LDFLAGS =
 EXTRA_TARGETS = EBOOT.PBP
@@ -16,9 +16,12 @@ BUILD_PRX = 1
 
 OBJS = \
 		main.o \
+		mem.o \
 		imports.o \
 		src/debug.o \
 		src/common.o \
+		src/lang.o \
+		src/cJSON.o \
 		src/system_mgr.o \
 		src/gamemgr.o \
 		src/net_mgr.o \
@@ -29,10 +32,10 @@ OBJS = \
 		src/menu.o \
 		src/controller.o \
 		src/ya2d++.o \
-		src/mp3.o \
 		src/browser.o \
 		src/browser_entries.o \
 		src/osk.o \
+		src/usb.o \
 		src/network.o \
 		src/settingsmenu.o \
 		src/optionsmenu.o \
@@ -51,16 +54,16 @@ OBJS = \
 		src/anim/snow.o \
 		src/anim/gol.o \
 		src/anim/noanim.o \
-		src/pmf/pmf.o \
-		src/pmf/pmf_video.o \
-		src/pmf/pmf_decoder.o \
-		src/pmf/pmf_audio.o \
-		src/pmf/pmf_reader.o \
-		src/pmf/at3.o \
+		src/multimedia/mp3.o \
+		src/multimedia/mpeg.o \
+		src/multimedia/mpeg_video.o \
+		src/multimedia/mpeg_decoder.o \
+		src/multimedia/mpeg_audio.o \
+		src/multimedia/mpeg_reader.o \
+		src/multimedia/at3.o \
 		src/ftp/ftp.o \
 		src/ftp/ftpd.o \
 		src/ftp/sutils.o \
-		src/ftp/util.o \
 		src/ftp/loadutil.o \
 		src/ftp/psp_cfg.o \
 		src/ftp/psp_init.o \
@@ -94,15 +97,19 @@ LIBS = \
 		-lpspnet \
 		-lpspnet_inet \
 		-lpsphttp \
+		-lpspusb \
+		-lpspdisplay \
+		-lpspusbdevice_driver \
 		-lpspsystemctrl_user \
 		-lpspkubridge \
 
 all: $(TARGET).prx
 	$(Q)python3 ./pkg.py
+	$(Q)mv themes/translations/THEME.ARK LANG.ARK
 
 distclean:
 	make clean
-	$(Q)-rm -f THEME.ARK
+	$(Q)-rm -f THEME.ARK LANG.ARK
 
 arkmenu: all
 

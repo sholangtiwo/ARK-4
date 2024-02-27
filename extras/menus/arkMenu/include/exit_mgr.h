@@ -3,9 +3,11 @@
 
 #include "system_entry.h"
 #include "optionsmenu.h"
+#include "common.h"
+#include <systemctrl.h>
+
 
 extern "C"{
-    void sctrlKernelExitVSH(void*);
     void scePowerRequestColdReset(int);
     void scePowerRequestStandby();
 }
@@ -22,10 +24,12 @@ class ExitManager : public SystemEntry{
     OptionsMenu* optionsmenu;
 
     public:
+        ExitManager(){ optionsmenu = NULL; };
         void draw(){
             if (optionsmenu) optionsmenu->draw();
         };
         void control(Controller* pad){
+            common::saveConf();
             if (optionsmenu){
                 int ret = optionsmenu->control();
                 switch (ret){

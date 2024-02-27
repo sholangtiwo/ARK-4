@@ -5,7 +5,7 @@ all: $(TARGET).prx
 CFLAGS = -std=c99 -Os -G0 -Wall
 INCDIR = $(PSPSDK)/include $(ARKROOT)/common/include $(ARKROOT)/libs/colordebugger $(ARKROOT)/libs/graphics
 
-LIBS = -lgraphics -lcolordebugger -lansic -lpspvram -lpspsystemctrl_user
+LIBS = -lgraphics -lcolordebugger -lansic -lpspvram -lpspsystemctrl_user -lpsprtc
 
 CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
@@ -20,3 +20,4 @@ PSP_FW_VERSION = 660
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
+

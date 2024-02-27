@@ -21,13 +21,32 @@ static struct {
     unsigned char max_options;
     unsigned char selection;
     unsigned char* config_ptr;
-    char* options[1];
+    char* options[17];
 } language = {
     "Language",
-    1,
+    17,
     0,
     &(common::getConf()->language),
-    {"English"}
+    {
+        "English",
+        "Español",
+        "Deutsch",
+        "Français",
+        "Português",
+        "Italiano",
+        "Nederlands",
+        "Русский",
+        "Yкраїнська",
+        "Română",
+        "Latin",
+        "Japanese",
+        "Korean",
+        "Chinese (Trad.)",
+        "Chinese (Simp.)",
+        "Polski",
+        "Ellhnika",
+        //"Thai",
+    }
 };
 
 /* Font entry */
@@ -36,10 +55,10 @@ static struct {
     unsigned char max_options;
     unsigned char selection;
     unsigned char* config_ptr;
-    char* options[19];
+    char* options[17];
 } font = {
     "Font style",
-    19,
+    17,
     0,
     &(common::getConf()->font),
     {
@@ -54,14 +73,12 @@ static struct {
         "Latin 7",
         "Latin 8",
         "Latin 9",
-        "Latin 19",
+        "Latin 10",
         "Latin 11",
         "Latin 12",
         "Latin 13",
         "Latin 14",
         "Latin 15",
-        "Japanese",
-        "Korean"
     }
 };
 
@@ -109,6 +126,52 @@ static struct {
     &(common::getConf()->scan_dlc),
     {"Disabled", "Enabled"}
 };
+
+/* Show Hidden files/folders */
+static struct {
+    char* description;
+    unsigned char max_options;
+    unsigned char selection;
+    unsigned char* config_ptr;
+    char* options[2];
+} show_hidden = {
+    "Show Hidden",
+    2,
+    0,
+    &(common::getConf()->show_hidden),
+    {"Disabled", "Enabled"}
+};
+
+/* Show Hidden files/folders */
+static struct {
+    char* description;
+    unsigned char max_options;
+    unsigned char selection;
+    unsigned char* config_ptr;
+    char* options[2];
+} show_size = {
+    "Show File Size",
+    2,
+    0,
+    &(common::getConf()->show_size),
+    {"Disabled", "Enabled"}
+};
+
+/* Show game device path on GO (whether on ef0: or ms0:) */
+static struct {
+    char* description;
+    unsigned char max_options;
+    unsigned char selection;
+    unsigned char* config_ptr;
+    char* options[2];
+} show_path = {
+    "Show Game Path",
+    2,
+    0,
+    &(common::getConf()->show_path),
+    {"Disabled", "Enabled"}
+};
+
 
 /* Button swap */
 static struct {
@@ -200,13 +263,13 @@ static struct {
     unsigned char max_options;
     unsigned char selection;
     unsigned char* config_ptr;
-    char* options[2];
+    char* options[4];
 } text_glow = {
     "Text Glow",
-    2,
+    4,
     0,
     &(common::getConf()->text_glow),
-    {"Disabled", "Enabled"}
+    {"Disabled", "1", "2", "3"}
 };
 
 static struct {
@@ -293,14 +356,30 @@ static struct {
     {"Default", "Small", "Medium", "Large"}
 };
 
+static struct {
+    char* description;
+    unsigned char max_options;
+    unsigned char selection;
+    unsigned char* config_ptr;
+    char* options[2];
+} browser_icon0 = {
+    "ICON0 in Browser",
+    2,
+    0,
+    &(common::getConf()->browser_icon0),
+    {"Disabled", "Enabled"}
+};
+
 
 settings_entry* settings_entries[] = {
-    (settings_entry*)&fast_gameboot,
     (settings_entry*)&language,
+    (settings_entry*)&fast_gameboot,
     (settings_entry*)&font,
     (settings_entry*)&scan_save,
     (settings_entry*)&scan_cat,
     (settings_entry*)&scan_dlc,
+    (settings_entry*)&show_hidden,
+    (settings_entry*)&show_size,
     (settings_entry*)&swap_buttons,
     (settings_entry*)&animations,
     (settings_entry*)&main_menu,
@@ -309,11 +388,13 @@ settings_entry* settings_entries[] = {
     (settings_entry*)&show_fps,
     (settings_entry*)&text_glow,
     (settings_entry*)&screensaver,
-    (settings_entry*)&redirect_ms0,
     (settings_entry*)&force_update,
     (settings_entry*)&battery_percent,
     (settings_entry*)&startbtn,
     (settings_entry*)&menusize,
+    (settings_entry*)&browser_icon0,
+    (settings_entry*)&redirect_ms0,
+    (settings_entry*)&show_path,
 };
 
 #define MAX_SETTINGS_OPTIONS (sizeof(settings_entries)/sizeof(settings_entries[0]))

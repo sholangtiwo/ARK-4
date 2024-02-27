@@ -26,19 +26,14 @@
 #include <pspumd.h>
 #include <psprtc.h>
 #include <pspinit.h>
-#include "systemctrl.h"
-#include "systemctrl_se.h"
 #include "systemctrl_private.h"
 #include "inferno.h"
 #include "globals.h"
 #include "macros.h"
 
-PSP_MODULE_INFO("PRO_Inferno_Driver", 0x1000, 1, 1);
+PSP_MODULE_INFO("PRO_Inferno_Driver", 0x1000, 2, 1);
 
-//u32 psp_model;
-//u32 psp_fw_version;
 
-extern int sceKernelApplicationType(void);
 extern int sceKernelSetQTGP3(void *unk0);
 extern char *GetUmdFile();
 

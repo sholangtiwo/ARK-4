@@ -26,7 +26,7 @@ int _pspemuLfatOpen(BootFile* file, int unk)
     char* p = file->name;
     if (strcmp(p, "pspbtcnf.bin") == 0){
         p[2] = 'v'; // custom btcnf for PS Vita
-        if (reboot_conf->iso_mode == MODE_INFERNO || reboot_conf->iso_mode == MODE_MARCH33 || reboot_conf->iso_mode == MODE_NP9660){
+        if (reboot_conf->iso_mode == MODE_INFERNO || reboot_conf->iso_mode == MODE_MARCH33){
             reboot_conf->iso_mode = MODE_INFERNO;
             p[5] = 'i'; // use inferno ISO mode (psvbtinf.bin)
         }
@@ -59,7 +59,7 @@ void SetMemoryPartitionTablePatched(void *sysmem_config, SceSysmemPartTable *tab
     // Add flash0 ramfs as partition 11
     SetMemoryPartitionTable(sysmem_config, table);
     table->extVshell.addr = EXTRA_RAM;
-    table->extVshell.size = VITA_EXTRA_RAM_SIZE;
+    table->extVshell.size = EXTRA_RAM_SIZE;
 }
 
 int PatchSysMem(void *a0, void *sysmem_config)

@@ -7,6 +7,7 @@
 #include "gfx.h"
 #include "optionsmenu.h"
 #include "system_entry.h"
+#include "lang.h"
 
 using namespace std;
 
@@ -18,6 +19,7 @@ enum{
     DELETE,
     RENAME,
     CREATE,
+    USB_DEV,
     MS0_DIR,
     EF0_DIR,
     FTP_DIR,
@@ -48,8 +50,8 @@ class BrowserDriver{
 class Browser : public SystemEntry{
 
     public:
-        Browser();
         ~Browser();
+        static Browser* getInstance();
         
         void draw();
         
@@ -62,6 +64,10 @@ class Browser : public SystemEntry{
         }
         void resume(){
             animation = -1;
+            if (firstboot){
+                this->refreshDirs();
+                firstboot = false;
+            }
             while (animation != 0)
                 sceKernelDelayThread(0);
         }
@@ -70,9 +76,21 @@ class Browser : public SystemEntry{
         void setName(string name){};
         
         string getInfo(){
-            if (devsize.size() > 0)
-                return this->cwd + " (Free size: "+devsize+")";
             return this->cwd;
+        }
+
+        void drawInfo(){
+            static TextScroll scroll;
+            if (devsize.size() > 0){
+                int w = common::calcTextWidth(cwd.c_str(), SIZE_MEDIUM, 0);
+                scroll.w = 150;
+                common::printText(5, 13, cwd.c_str(), LITEGRAY, SIZE_MEDIUM, 0, NULL, 0);
+                common::printText(5+w, 13, string(" ("+TR("Free size")+": "+devsize+")").c_str(), LITEGRAY, SIZE_MEDIUM, 0, &scroll);
+            }
+            else{
+                scroll.w = 200;
+                common::printText(5, 13, cwd.c_str(), LITEGRAY, SIZE_MEDIUM, 0, &scroll, 0);
+            }
         }
         
         string getName(){
@@ -93,6 +111,8 @@ class Browser : public SystemEntry{
         static const char* getCWD();
         
     private:
+
+        Browser();
     
         string cwd; // Current Working Directory
 
@@ -110,6 +130,8 @@ class Browser : public SystemEntry{
         bool animating; // animate the menu transition?
         unsigned int moving;
         int animation;
+        bool firstboot;
+        bool is_loading;
         
         /* Screen drawing thread data */
         bool hide_main_window;
@@ -138,9 +160,9 @@ class Browser : public SystemEntry{
     
         void moveDirUp();
         
-        void update();
+        void update(Entry* ent, bool skip_prompt);
         
-        void refreshDirs();
+        void refreshDirs(const char* retry=NULL);
         
         void drawScreen();
         
@@ -185,6 +207,7 @@ class Browser : public SystemEntry{
         void makedir();
         void makefile();
         void createNew();
+        void toggleUSB();
         
         void rename();
         

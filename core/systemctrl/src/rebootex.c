@@ -52,9 +52,6 @@ void backupRebootBuffer(void)
     // Copy ARK runtime Config
     if (IS_ARK_CONFIG(ARK_CONFIG))
         memcpy(ark_config, ARK_CONFIG, sizeof(ARKConfig));
-
-    // clearup SE Config
-    memset(&se_config, 0, sizeof(SEConfig));
     
     // Flush Cache
     flushCache();
@@ -80,7 +77,6 @@ void restoreRebootBuffer(void)
     memcpy((void *)REBOOTEX_CONFIG, &rebootex_config, sizeof(RebootConfigARK));
 
     // Restore ARK Configuration
-    ark_config->recovery = 0; // reset recovery mode for next reboot
     memcpy(ARK_CONFIG, ark_config, sizeof(ARKConfig));
 }
 

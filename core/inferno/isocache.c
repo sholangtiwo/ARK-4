@@ -7,8 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "inferno.h"
-#include "systemctrl.h"
-#include "systemctrl_se.h"
+#include <systemctrl.h>
+#include <systemctrl_se.h>
 #include "systemctrl_private.h"
 #include "globals.h"
 #include "macros.h"
@@ -449,6 +449,9 @@ int infernoCacheInit(int cache_size, int cache_num, int partition)
     }
 
     cache_on = 1;
+
+    extern int (*iso_reader)(struct IoReadArg *args);
+    iso_reader = &iso_cache_read;
 
     return 0;
 }

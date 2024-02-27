@@ -1,0 +1,88 @@
+Por Defecto
+Jap¢n
+Am‚rica
+Europa
+Corea
+Reino Unido
+Latinoam‚rica
+Australia
+Hong Kong
+Taiw n
+Rusia
+China
+Debug I
+Debug II
+Deshabilitado
+Habilitado
+Normal
+Cambiar
+X -> O
+O -> X
+DISPOSITIVO USB
+PROTEGER USB
+ISO VIDEO
+COLOR FG
+COLOR BG
+FUENTE
+DISE¥O DEL MENU
+MENU PRINCIPAL
+CAMBIAR BATERIA
+CAMBIAR X/O
+REGION VSH
+REGION UMD
+IMPORTAR PLUGINS CLASICOS
+ACTIVAR FLASH Y WMA
+BORRAR HIBERNACION
+CARGAR ISO RANDOM
+VOLVER
+SIN HIBERNACION
+Normal -> Pandora
+Pandora -> Normal
+MENU VSH
+MENU VSH AVANZADO
+MENU RECOVERY ->
+APAGAR CONSOLA
+SUSPENDER
+REINICIAR
+RECARGAR
+SALIR
+Sin soporte
+USB de Adrenaline
+Flash
+Disco UMD
+Memoria Interna
+Memory Stick
+Nada
+Clasico
+Simple
+Avanzado
+Nuevo
+Al azar
+Rojo
+Rojo Claro
+Naranja
+Naranja Claro
+Amarillo
+Amarillo Claro
+Verde
+Verde Claro
+Az£l
+Az£l Claro
+Indigo
+Indigo Claro
+Violeta
+Violeta Claro
+Rosa
+Rosa Claro
+P£rpura
+P£rpura Claro
+Verde Azulado
+Verde Azulado Claro
+Agua
+Agua Claro
+Gris
+Gris Claro
+Negro
+Negro Claro
+Blanco
+Blanco Claro

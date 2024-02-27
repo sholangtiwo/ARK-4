@@ -1,0 +1,25 @@
+ARK-4-Updater
+Custom Firmware Einstellungen
+Plugin Manager
+Benutzerdefinierter Launcher
+USB-Aufladung
+CPU Übertakten
+Energiesparen
+Ausgeglichener Modus
+Autoboot Startprogramm
+Deaktiviere Pausenfunktion für PSP Go
+Erzwinge zusätzlichen Speicher
+Memory Stick beschleunigen
+Inferno Zwischenspeicher
+Alte Plugins unterstützung für PSP Go
+Sony Logos überspringen
+Verstecke PIC0 und PIC1
+Verhindert das Löschen des Ruhezustands auf der PSP Go
+Verstecke MAC-Adresse
+Verstecke DLC
+LEDs Abschalten
+Deaktivieren Sie das UMD-Laufwerk
+Analogstick deaktivieren
+QA-Flags
+Benutzerdefinierte App
+PSP-Übertaktung

@@ -26,22 +26,6 @@ int (* DisplaySetFrameBuf)(void*, int, int, int) = NULL;
 
 u64 kermit_flash_load(int cmd);
 
-// Return Boot Status
-int isSystemBooted(void)
-{
-
-    // Find Function
-    int (* _sceKernelGetSystemStatus)(void) = (void*)sctrlHENFindFunction("sceSystemMemoryManager", "SysMemForKernel", 0x452E3696);
-    
-    // Get System Status
-    int result = _sceKernelGetSystemStatus();
-        
-    // System booted
-    if(result == 0x20000) return 1;
-    
-    // Still booting
-    return 0;
-}
 
 void OnSystemStatusIdle() {
 	SceAdrenaline *adrenaline = (SceAdrenaline *)ADRENALINE_ADDRESS;
@@ -272,28 +256,6 @@ int sctrlGetUsbState() {
 	return 2; // Not connected
 }
 
-/*
-u32 FindPowerFunction(u32 nid) {
-	return sctrlHENFindFunction("scePower_Service", "scePower", nid);
-}
-
-void SetSpeed(int cpu, int bus) {
-	if (cpu == 20 || cpu == 75 || cpu == 100 || cpu == 133 || cpu == 333 || cpu == 300 || cpu == 266 || cpu == 222) {
-		int (*scePowerSetClockFrequency_k)(int, int, int) = (void *)FindPowerFunction(0x737486F2);
-		scePowerSetClockFrequency_k(cpu, cpu, bus);
-
-		if (sceKernelInitKeyConfig() != PSP_INIT_KEYCONFIG_VSH) {
-			MAKE_DUMMY_FUNCTION((u32)scePowerSetClockFrequency_k, 0);
-			MAKE_DUMMY_FUNCTION((u32)FindPowerFunction(0x545A7F3C), 0);
-			MAKE_DUMMY_FUNCTION((u32)FindPowerFunction(0xB8D7B3FB), 0);
-			MAKE_DUMMY_FUNCTION((u32)FindPowerFunction(0x843FBF43), 0);
-			MAKE_DUMMY_FUNCTION((u32)FindPowerFunction(0xEBD177D6), 0);
-			flushCache();
-		}
-	}
-}
-*/
-
 void patch_VshMain(SceModule2* mod){
 	u32 text_addr = mod->text_addr;
 
@@ -315,9 +277,9 @@ void patch_SysconfPlugin(SceModule2* mod){
 	MAKE_DUMMY_FUNCTION_RETURN_0(text_addr + 0xD2C4);
 
 	// Redirect USB functions
-	MAKE_SYSCALL(mod->text_addr + 0xAE9C, sctrlStartUsb);
-	MAKE_SYSCALL(mod->text_addr + 0xAFF4, sctrlStopUsb);
-	MAKE_SYSCALL(mod->text_addr + 0xB4A0, sctrlGetUsbState);
+	REDIRECT_SYSCALL(mod->text_addr + 0xAE9C, sctrlStartUsb);
+	REDIRECT_SYSCALL(mod->text_addr + 0xAFF4, sctrlStopUsb);
+	REDIRECT_SYSCALL(mod->text_addr + 0xB4A0, sctrlGetUsbState);
 
 	// Ignore wait thread end failure
 	_sw(0, text_addr + 0xB264);
@@ -335,13 +297,7 @@ void AdrenalineOnModuleStart(SceModule2 * mod){
 
     // System fully booted Status
     static int booted = 0;
-
-    if(strcmp(mod->modname, "sceDisplay_Service") == 0)
-    {
-        // can use screen now
-        goto flush;
-    }
-
+	
 	// Patch Kermit Peripheral Module to load flash0
     if(strcmp(mod->modname, "sceKermitPeripheral_Driver") == 0)
     {
@@ -471,8 +427,17 @@ void AdrenalineOnModuleStart(SceModule2 * mod){
 		if (se_config->iso_cache){
 			int (*CacheInit)(int, int, int) = sctrlHENFindFunction("PRO_Inferno_Driver", "inferno_driver", 0x8CDE7F95);
 			if (CacheInit){
-				CacheInit(32 * 1024, 32, (se_config->force_high_memory)?2:11); // 2MB cache for PS Vita
+				se_config->iso_cache_size = 32 * 1024;
+                se_config->iso_cache_num = 128;
+				CacheInit(32 * 1024, 128, (se_config->force_high_memory)?2:11); // 4MB cache for Adrenaline
 			}
+			if (se_config->iso_cache == 2){
+            	int (*CacheSetPolicy)(int) = sctrlHENFindFunction("PRO_Inferno_Driver", "inferno_driver", 0xC0736FD6);
+            	if (CacheSetPolicy){
+					se_config->iso_cache_policy = CACHE_POLICY_RR;
+					CacheSetPolicy(CACHE_POLICY_RR);
+				}
+        	}
         }
         goto flush;
     }
@@ -484,7 +449,8 @@ void AdrenalineOnModuleStart(SceModule2 * mod){
         if(isSystemBooted())
         {
             // Initialize Memory Stick Speedup Cache
-            if (se_config->msspeed) msstorCacheInit("ms", 8 * 1024);
+            if (se_config->msspeed)
+				msstorCacheInit("ms");
 
             // patch bug in ePSP volatile mem
             _sceKernelVolatileMemTryLock = (void *)sctrlHENFindFunction("sceSystemMemoryManager", "sceSuspendForUser", 0xA14F40B2);
@@ -545,6 +511,7 @@ void AdrenalineSysPatch(){
     SceModule2* loadcore = patchLoaderCore();
     PatchIoFileMgr();
     PatchMemlmd();
+
 	// initialize Adrenaline Layer
     initAdrenaline();
 }

@@ -5,71 +5,29 @@
 #                                   #
 # Author  : Krazynez                #
 #                                   #
-# Date    : 2022-09-09              #
+# Date    : 2023-11-24              #
 #                                   #
 #####################################
-version=0.6.1
+version=0.9.0
 
-export PSPDEV=/usr/local/pspdev && export PATH=$PATH:$PSPDEV/bin 
+if [[ -z ${PSPDEV} ]]; then
+	clear
+	printf "\nYou don't seem to have PSPDEV setup. Probably should fix that first.\n\n"
+	read -p "Would you like to add one now? y/N: " userInput
+	if [[ "$userInput" =~ ^(Y|y|yes|YES)$ ]]; then
+		printf "\n"
+		read -p "PSPDEV path (ex: /usr/local/pspdev): " getPath
+		export PSPDEV="$getPath" && export PATH="$PATH:$PSPDEV/bin"
+	fi
+fi
+
 
 dialogCheck=$(command -v dialog 2>/dev/null)
 
 function checkDepends {
-	python3Check=$(command -v python3 2>/dev/null)
-	python3Ret=$?
 
-	makeCheck=$(command -v make 2>/dev/null)
-	makeRet=$?
-
-	sevenzCheck=$(command -v 7z 2>/dev/null)
-	sevenzRet=$?
-
-	if [[ $python3Ret -eq 1 || $makeRet -eq 1 ]] ; then
-		if [[ $python3Ret && $makeRet -eq 1 ]] ; then
-			if [[ -f $dialogCheck ]] ; then
-				dialog --colors --title "\Z1 ERROR! \Z0" --infobox "[ python3 ] and  [ make ] are required packages" 10 50 
-				sleep 2;
-				dialog --clear
-				exit 1;	
-			else
-				printf "You need both \`python3\` and \`make\`\n"
-				exit 1;
-			fi
-		fi
-
-	elif [[ $python3Ret -eq 1 && $makeRet -eq 0 ]] ; then
-		if [[ -f $dialogCheck ]] ; then
-            dialog --colors --title "\Z1 ERROR! \Z0" --infobox "[ python3 ] is a required package" 10 50
-            sleep 2;
-            dialog --clear
-            exit 1; 
-        else
-            printf " \`python3\` is required\n"
-            exit 1;
-		fi
-
-	elif [[ $python3Ret -eq 0 && $makeRet -eq 1 ]] ; then
-		if [[ -f $dialogCheck ]] ; then
-            dialog --colors --title "\Z1 ERROR! \Z0" --infobox "[ make ] is a required package" 10 50
-            sleep 2;
-            dialog --clear
-            exit 1;
-        else
-            printf " \`make\` is required\n"
-            exit 1;
-		fi
-	elif [[ $sevenzRet -eq 1 ]] ; then
-		if [[ -f $dialogCheck ]] ; then
-			dialog --colors --title "\Z1 ERROR! \Z0" --infobox "[ 7z ] is a required package" 10 50
-			sleep 2;
-			dialog --clear
-			exit 1;
-		else
-			printf " \`7z\` is required\n"
-			exit 1;
-		fi
-	fi
-
+	sudo apt install -y build-essential mkisofs python3-pip p7zip-full zlib1g-dev libmpfr-dev python3-pycryptodome
+	pip3 install ecdsa
 }
 
 export -f checkDepends
@@ -91,27 +49,32 @@ export -f elevatePrivs
 
 function original {
 	
-	clear
-	read -p "
-	This script will setup the correct SDK to build ARK, get sign_np
-	dependency and temporarly setup the enivorment to build ARK-4. 
-	
-	Press Enter to continue..."
-	
-	
-	if [ -d "/usr/local/pspdev" ] ; then
+	if [[ "$1" == "--docker" ]]; then
 		clear
-	    read -p "You seem to already have the SDK installed. Do you want to reinstall or continue? (y)es/(n)o/(c)ontinue 
-	
-	if you continue ARK will try to build with already installed SDK: " input
-	
-	if [[ ! "$input" =~ ^(Y|Yes|YEs|YES|yES|yeS|yes|y|c|C)$ ]] ; then
-		printf "Exiting....\n"
-		exit 0;
+		read -p "
+		This script will setup the correct SDK to build ARK, get sign_np
+		dependency and temporarly setup the enivorment to build ARK-4. 
+		
+		Press Enter to continue..."
+		
+		
+		if [ -d "$PSPDEV" ] ; then
+			clear
+			read -p "You seem to already have the SDK installed. Do you want to reinstall or continue? (y)es/(n)o/(c)ontinue 
+		
+		if you continue ARK will try to build with already installed SDK: " input
+		fi
+		
+		if [[ ! "$input" =~ ^(Y|Yes|YEs|YES|yES|yeS|yes|y|c|C)$ ]] ; then
+			printf "Exiting....\n"
+			exit 0;
+		fi
 	fi
 	
 	if [[ ! -f "/lib/libmpfr.so.4" ]] ; then
-		if [[ -f "/usr/lib/x86_64-linux-gnu/libmpfr.so.4" ]] ; then
+		if [[ "$1" == "--docker" ]]; then
+			elevatePrivs ln -s '/usr/lib/x86_64-linux-gnu/libmpfr.so.6.1.0' /lib/libmpfr.so.4
+		else if [[ -f "/usr/lib/x86_64-linux-gnu/libmpfr.so.4" ]] ; then
 			printf "Already Exist\n"
 		elif [[ -f "/usr/lib/x86_64-linux-gnu/libmpfr.so" ]] ; then
 			elevatePrivs ln -s /usr/lib/x86_64-linux-gnu/libmpfr.so /usr/lib/x86_64-linux-gnu/libmpfr.so.4
@@ -125,13 +88,39 @@ function original {
 	        fi
 	    fi
 	fi
-	
-	    if [[ ! $input =~ ^(c|C)$ ]] ; then
-	        elevatePrivs 7z x ./contrib/PC/PSPSDK/pspdev.7z -o"/usr/local"
+
+	    if [[ ! $input =~ ^(c|C)$ || "$1" == "--docker" ]] ; then
+	        elevatePrivs 7z -aoa x ./contrib/PC/PSPSDK/pspdev.7z -o"${PSPDEV:0:-7}"
 	    fi
 	
 	    # Should be added to .bashrc or somthing to make it static, but for now I will leave it just for the session
 		elevatePrivs chown -R $USER:$USER $PSPDEV 
+
+		# downloads mkpsxsio and installs
+		if [[ ! -f "/usr/bin/mkpsxiso" ]]; then
+				check_curl=$(command -v curl)
+				curl_ret=$?
+				check_wget=$(command -v wget)
+				wget_ret=$?
+			if [[ -f "/usr/bin/apt" ]]; then
+				if [[ $curl_ret == 0 ]]; then
+					$check_curl -OJL "https://github.com/Lameguy64/mkpsxiso/releases/download/v2.03/mkpsxiso-2.03-Linux.deb" && elevatePrivs apt install ./mkpsxiso-2.03-Linux.deb
+				elif [[ $wget_ret == 0 ]]; then
+					$check_wget -O $(pwd)/mkpsxiso-2.03-Linux.deb "https://github.com/Lameguy64/mkpsxiso/releases/download/v2.03/mkpsxiso-2.03-Linux.deb" && elevatePrivs apt install ./mkpsxiso-2.03-Linux.deb
+				fi
+			elif [[ -f "/usr/bin/dnf" ]]; then
+				if [[ $curl_ret == 0 ]]; then
+					$check_curl -OJL "https://github.com/Lameguy64/mkpsxiso/releases/download/v2.03/mkpsxiso-2.03-Linux.rpm" && elevatePrivs dnf install ./mkpsxiso-2.03-Linux.deb
+				elif [[ $wget_ret == 0 ]]; then
+					$check_wget -O $(pwd)/mkpsxiso-2.03-Linux.deb "https://github.com/Lameguy64/mkpsxiso/releases/download/v2.03/mkpsxiso-2.03-Linux.rpm "&& elevatePrivs dnf install ./mkpsxiso-2.03-Linux.deb
+				fi
+
+			fi
+
+		fi
+
+
+
 	
 	    # Signs eboots needed for ARK Loader
 	    if [[ ! -f $PSPDEV/bin/sign_np ]] ; then
@@ -194,12 +183,12 @@ function withDialog {
 	dialog \
 		--title "Welcome to the ARK Compiler" \
 		--backtitle "Script created by Krazynez Version: $version" \
-		--msgbox "This script will setup the correct SDK to build ARK, get sign_np dependency and temporarly setup the enivorment to build ARK-4." 10 80 
+		--msgbox "This script will setup the correct SDK to build ARK, get sign_np dependency and mkpsxiso and temporarly setup the enivorment to build ARK-4." 10 80 
 
 $
 	dialog 	--title "Checking for existitng SDK"
 
-	if [[ -d "/usr/local/pspdev" ]] ; then
+	if [[ -d "$PSPDEV" ]] ; then
 		response=$(dialog \
 			--title "EXISITING PSPSDK!" \
 			--no-cancel \
@@ -213,14 +202,14 @@ $
 
 		case $response in
 			1)
-			 	elevatePrivs rm -rf /usr/local/pspdev && sudo 7z x ./contrib/PC/PSPSDK/pspdev.7z -o"/usr/local" && sudo chown -R $USER:$USER $PSPDEV ;;
+			 	elevatePrivs rm -rf $PSPDEV && sudo 7z x ./contrib/PC/PSPSDK/pspdev.7z -o"${PSPDEV:0:-7}" && sudo chown -R $USER:$USER $PSPDEV ;;
 			2)
 				elevatePrivs chown -R $USER:$USER $PSPDEV ;;
 			*)
 				dialog --infobox "Exiting...\n\nPlease Wait..." 5 20 && sleep 2 && dialog --clear && exit 0 ;;
 		esac
 	else
-		elevatePrivs 7z x ./contrib/PC/PSPSDK/pspdev.7z -o"/usr/local" && sudo chown -R $USER:$USER $PSPDEV
+		elevatePrivs 7z x ./contrib/PC/PSPSDK/pspdev.7z -o"${PSPDEV:0:-7}" && sudo chown -R $USER:$USER $PSPDEV
 	fi
 
 	if [[ ! -f "/lib/libmpfr.so.4" ]] ; then
@@ -273,41 +262,15 @@ $
 
 	
 		# ArkFast
+		FastARK="https://github.com/Yoti/ArkFast-4/releases/download/42056/ArkFast_4.20.56.vpk"
 		if [[ $curl_ret -eq 0 ]]; then
-			${check_curl} -o dist/ArkFast/ArkFast.vpk -JL "https://github.com/theheroGAC/ArkFast/releases/download/2.31/ArkFast.vpk"
+			${check_curl} -o dist/ArkFast/ArkFast.vpk -JL $FastARK
 			exit
 		elif [[ $wget_ret -eq 0 ]]; then
-			${check_wget} -O dist/ArkFast/ArkFast.vpk "https://github.com/theheroGAC/ArkFast/releases/download/2.31/ArkFast.vpk"
+			${check_wget} -O dist/ArkFast/ArkFast.vpk $FastARK
 			exit
 		fi
-		
-
-
-
-    # Trinity
-	elif [[ $1 == "--no-cfw-vita" ]]; then
-		check_curl=$(command -v curl)
-		curl_ret=$?
-		check_wget=$(command -v wget)
-		wget_ret=$?
-
-
-		if [ ! -d "dist/Trinity" ]; then
-			$(command -v mkdir) dist/Trinity
-		fi
-
-
-		if [[ $curl_ret -eq 0 ]]; then
-			${check_curl} -o dist/Trinity/PBOOT.PBP -JL "https://github.com/TheOfficialFloW/Trinity/releases/download/v1.0/PBOOT.PBP"
-			exit
-		elif [[ $wget_ret -eq 0 ]]; then
-			${check_wget} -O dist/Trinity/PBOOT.PBP "https://github.com/TheOfficialFloW/Trinity/releases/download/v1.0/PBOOT.PBP"
-			exit
-		fi
-
 	fi
-
-
 }
 
 export -f withDialog

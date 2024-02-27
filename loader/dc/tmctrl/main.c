@@ -60,9 +60,9 @@ void OnModuleStart(SceModule2 *mod)
 	{
 		SceModule2 *mod2 = (SceModule2 *)sceKernelFindModuleByName("sceMSFAT_Driver");
 
-		MAKE_CALL(mod2->text_addr + 0x30fc, df_openPatched);
-		MAKE_CALL(mod2->text_addr + 0x3ba4, df_dopenPatched);
-		MAKE_CALL(mod2->text_addr + 0x44cc, df_devctlPatched);
+		MAKE_CALL(mod2->text_addr + 0x30fc, df_openPatched); // scan first occurrence of 0x24041000
+		MAKE_CALL(mod2->text_addr + 0x3ba4, df_dopenPatched); // scan seventh occurence
+		MAKE_CALL(mod2->text_addr + 0x44cc, df_devctlPatched); // scan 13th (last) occurrence
 
 		ClearCaches();
 	}
@@ -83,9 +83,7 @@ void OnModuleStart(SceModule2 *mod)
 	}
 	else if (strcmp(moduleName, "sceMediaSync") == 0)
 	{
-		//TODO make this patch dynamic
 		MAKE_DUMMY_FUNCTION_RETURN_0(mod->text_addr + 0x135c);
-
 		ClearCaches();
 	}
 

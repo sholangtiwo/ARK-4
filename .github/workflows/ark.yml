@@ -4,7 +4,9 @@ on:
     paths-ignore: 
       - 'README.md'
       - 'build.sh' 
-      - '.github/ISSUES_TEMPLATE.md'
+      - '.github/ISSUES_TEMPLATE/*'
+      - '.github/screenshots/*'
+      - '.github/wallpapers/*'
       - 'contrib/PC/ARKUpgrader'
       - '*.pptx'
       - 'CHANGELOG.md'
@@ -29,7 +31,7 @@ jobs:
         continue-on-error: true
         name: check latest commit is less than a day
         if: ${{ github.event_name == 'schedule' }}
-        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
+        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "{name}={should_run::false}" >> $GITHUB_OUTPUT
       
 
 
@@ -45,7 +47,7 @@ jobs:
 
       - uses: actions/checkout@v3
       - name: Install Dependencies
-        run: sudo apt-get install autoconf automake bison flex gcc libmpfr-dev libncurses5-dev libreadline-dev libusb-dev make patch subversion texinfo wget git python3 python3-pip && sudo pip3 install pycryptodome ecdsa
+        run: sudo apt-get install autoconf automake bison flex gcc libmpfr-dev libncurses5-dev libreadline-dev libusb-dev make patch subversion texinfo wget git python3 python3-pip python3-pycryptodome mkisofs && sudo pip3 install ecdsa
       - name: Extract SDK
         run: sudo 7z -o/usr/local/ x ./contrib/PC/PSPSDK/pspdev.7z 
       - name: Change Permissions
@@ -58,6 +60,8 @@ jobs:
         run: sudo ln -s /usr/lib/x86_64-linux-gnu/libmpfr.so.6 /usr/lib/x86_64-linux-gnu/libmpfr.so.4
       - name: sign_np
         run: cd .. && curl -OJL "https://github.com/swarzesherz/sign_np/archive/refs/tags/v1.0.2.tar.gz" && tar xvf sign_np-1.0.2.tar.gz && cd sign_np-1.0.2 && make && sudo cp sign_np /usr/local/pspdev/bin
+      - name: mkpsxiso
+        run: cd .. && curl -OJL "https://github.com/Lameguy64/mkpsxiso/releases/download/v2.03/mkpsxiso-2.03-Linux.deb" && sudo apt install ./mkpsxiso-2.03-Linux.deb
       - name: Making ARK-4
         run: make
       - name: Compressing dist directory up
@@ -92,3 +96,9 @@ jobs:
               ARK-4-${{ steps.get_version.outputs.VERSION }}.tar.gz
               ARK-4-${{ steps.get_version.outputs.VERSION }}-DEBUG.zip
               ARK-4-${{ steps.get_version.outputs.VERSION }}-DEBUG.tar.gz
+
+      - name: Update Test Server
+        # Please don't abuse this or I will have to revert back to the orginal way.
+        run:  curl -L 'http://ark-4.ddns.net/automagic?update_test=1'
+      # - name: Update Stable Server
+      # run: curl http://ark-4.ddns.net/automagic?update=1

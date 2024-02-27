@@ -207,7 +207,7 @@
 	IMPORT_FUNC "SystemCtrlForKernel",0xDCDC3891,sctrlHENSetRebootexOverride
 #endif
 #ifdef F_SystemCtrlForKernel_0067
-    IMPORT_FUNC "SystemCtrlForUser",0x577AF198,sctrlKernelLoadExecVSHDisc
+    IMPORT_FUNC "SystemCtrlForKernel",0x577AF198,sctrlKernelLoadExecVSHDisc
 #endif
 #ifdef F_SystemCtrlForKernel_0068
     IMPORT_FUNC "SystemCtrlForKernel",0x94FE5E4B,sctrlKernelLoadExecVSHDiscUpdater
@@ -273,20 +273,23 @@
     IMPORT_FUNC "SystemCtrlForKernel",0xFFEFA034,sctrlSESetDiscOut
 #endif
 #ifdef F_SystemCtrlForKernel_0089
-    IMPORT_FUNC "SystemCtrlForKernel",0x22A45DB7,sctrlHENIsTestingTool
+    IMPORT_FUNC "SystemCtrlForKernel",0x22A45DB7,sctrlHENIsToolKit
 #endif
 #ifdef F_SystemCtrlForKernel_0090
-    IMPORT_FUNC "SystemCtrlForKernel",0xE918D837,sctrlHENSetTestingTool
+    IMPORT_FUNC "SystemCtrlForKernel",0x18B687A6,sctrlHENGetRebootexConfig
 #endif
 #ifdef F_SystemCtrlForKernel_0091
     IMPORT_FUNC "SystemCtrlForKernel",0x6A5F76B5,sctrlHENRegisterLLEHandler
 #endif
 #ifdef F_SystemCtrlForKernel_0092
-    IMPORT_FUNC "SystemCtrlForKernel",0x344A971E,sctrlHENTakeInitControl
+    IMPORT_FUNC "SystemCtrlForKernel",0x23833651,sctrlGetThreadUIDByName
 #endif
 #ifdef F_SystemCtrlForKernel_0093
     IMPORT_FUNC "SystemCtrlForKernel",0xFF73C3A3,exitLauncher
 #endif
 #ifdef F_SystemCtrlForKernel_0094
+    IMPORT_FUNC "SystemCtrlForKernel",0x324DF3DD,flushCache
+#endif
+#ifdef F_SystemCtrlForKernel_0095
     IMPORT_FUNC "SystemCtrlForKernel",0x18B687A6,sctrlHENGetRebootexConfig
 #endif

@@ -9,6 +9,7 @@ class MusicPlayer : public OptionsMenu{
 
     private:
         string path;
+        TextScroll scroll;
     
     public:
         MusicPlayer(string path);
@@ -21,6 +22,7 @@ class MusicPlayer : public OptionsMenu{
 
         static void pauseResume();
         static bool isPlaying();
+        static void fullStop();
 
 };
 

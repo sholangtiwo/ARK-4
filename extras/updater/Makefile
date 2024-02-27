@@ -9,17 +9,19 @@ C_OBJS = main.o
 OBJS = $(C_OBJS)
 all: $(TARGET).prx
 CFLAGS = -std=c99 -Os -G0 -Wall
-INCDIR = $(ARKROOT)/common/include
+INCDIR = $(ARKROOT)/common/include $(ARKROOT)/loader/dc
 LIBDIR = $(ARKROOT)/libs
 
-LIBS = -lpspsystemctrl_user -lansic
+LIBS = -lpspsystemctrl_user -lpspkubridge
 
 CXXFLAGS = $(CFLAGS)
 ASFLAGS = $(CFLAGS)
 LDFLAGS =
 BUILD_PRX = 1
 
-PSP_EBOOT_TITLE += ARK Updater
+PSP_EBOOT_TITLE = ARK Updater
+PSP_EBOOT_ICON = resources/ICON0.PNG
+PSP_EBOOT_PIC1 = resources/PIC1.PNG
 
 EXTRA_TARGETS = EBOOT.PBP
 

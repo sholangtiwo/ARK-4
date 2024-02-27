@@ -2,13 +2,12 @@ TARGET = pspcompat
 
 C_OBJS = \
 	main.o \
+	cwpatch.o \
 	syspatch.o \
 	high_mem.o  \
-	cpuclock.o   \
 	libertas.o   \
 	usb_charge.o  \
 	region_free.o \
-	$(ARKROOT)/core/systemctrl/src/gameinfo.o \
 		
 OBJS = \
 	$(C_OBJS) imports.o
@@ -30,7 +29,7 @@ USE_KERNEL_LIBS=1
 
 LIBDIR = $(ARKROOT)/libs
 LDFLAGS =  -nostartfiles
-LIBS = -lpspsystemctrl_kernel -lpspsemaphore
+LIBS = -lpspsystemctrl_kernel
 
 PSP_FW_VERSION = 660
 

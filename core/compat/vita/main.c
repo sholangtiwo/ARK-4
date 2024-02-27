@@ -55,7 +55,7 @@ static void processArkConfig(){
         ark_config->exec_mode = PS_VITA; // assume running on PS Vita
     }
     if (ark_config->launcher[0] == '\0'){
-        strcpy(ark_config->launcher, ARK_MENU);
+        strcpy(ark_config->launcher, VBOOT_PBP);
     }
 }
 
@@ -63,11 +63,15 @@ static void processArkConfig(){
 int module_start(SceSize args, void * argp)
 {
 
-    // set rebootex for Vita
-    sctrlHENSetRebootexOverride(rebootbuffer_vita);
-
     // copy configuration
     processArkConfig();
+
+    if (ark_config->exec_mode != PS_VITA){
+        return 1;
+    }
+
+    // set rebootex for Vita
+    sctrlHENSetRebootexOverride(rebootbuffer_vita);
     
     // Vita patches
     PROVitaSysPatch();

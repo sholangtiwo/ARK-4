@@ -9,16 +9,19 @@ class BrowserFile : public Entry{
         bool selected;
         string fileSize;
         int filetype;
+        string shortname;
+        string parent;
 
         virtual unsigned getFileSize();
+
+        void setShortName(string shortname);
 
     public:
     
         BrowserFile();
     
-        BrowserFile(string path);
-        
-        BrowserFile(BrowserFile* orig);
+        BrowserFile(string path, string shortname);
+        BrowserFile(string parent, string name, string shortname);
         
         ~BrowserFile();
         
@@ -39,23 +42,24 @@ class BrowserFile : public Entry{
         char* getSubtype();
         
         void loadIcon();
+
+        void freeIcon();
         
-        void getTempData1();
+        void loadPics();
         
-        void getTempData2();
+        void loadAVMedia();
         
         void doExecute();
 
         int getFileType() { return filetype; }
+
+        string getFullPath() { return path; }
 };
 
 class BrowserFolder : public BrowserFile{
     public:
-        BrowserFolder(string path);
-        
-        BrowserFolder(BrowserFolder* orig);
-        
-        BrowserFolder(string parent, string name);
+        BrowserFolder(string path, string shortname);
+        BrowserFolder(string parent, string name, string shortname);
         
         ~BrowserFolder();
         

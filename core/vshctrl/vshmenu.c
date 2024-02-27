@@ -25,8 +25,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "globals.h"
-#include "systemctrl.h"
-#include "systemctrl_se.h"
+#include <systemctrl.h>
+#include <systemctrl_se.h>
 #include "systemctrl_private.h"
 
 #define SENSE_KEY (PSP_CTRL_CIRCLE|PSP_CTRL_TRIANGLE|PSP_CTRL_CROSS|PSP_CTRL_SQUARE|PSP_CTRL_START|PSP_CTRL_SELECT)
@@ -36,12 +36,10 @@
 #define ALL_TRIGGER  (PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER)
 #define ALL_FUNCTION (PSP_CTRL_SELECT|PSP_CTRL_START|PSP_CTRL_HOME|PSP_CTRL_HOLD|PSP_CTRL_NOTE)
 #define ALL_CTRL     (ALL_ALLOW|ALL_BUTTON|ALL_TRIGGER|ALL_FUNCTION)
+#define FORCE_LOAD   (PSP_CTRL_SELECT|ALL_TRIGGER)
 
 extern ARKConfig* ark_config;
-extern int cur_usbdevice;
-extern int usb_readonly;
-
-SEConfig conf;
+extern SEConfig* se_config;
 
 static int (*g_VshMenuCtrl) (SceCtrlData *, int);
 static SceUID g_satelite_mod_id = -1;
@@ -61,33 +59,20 @@ int vctrlVSHRegisterVshMenu(int (*ctrl)(SceCtrlData *, int))
 
 int vctrlVSHUpdateConfig(SEConfig *config)
 {
-    u32 k1;
-    int ret;
-    k1 = pspSdkSetK1(0);
-    memcpy(&conf, config, sizeof(conf));
-    ret = sctrlSESetConfig(&conf);
-    cur_usbdevice = config->usbdevice;
-    usb_readonly = config->usbdevice_rdonly;
-    pspSdkSetK1(k1);
-    return ret;
+    memcpy(se_config, config, sizeof(SEConfig));
+    return 0;
 }
 
 int vctrlVSHExitVSHMenu(SEConfig *config, char *videoiso, int disctype)
 {
-    u32 k1;
-    int ret = 0;
 
-    k1 = pspSdkSetK1(0);
     if (config){
-        ret = vctrlVSHUpdateConfig(config);
-        cur_usbdevice = config->usbdevice;
-        usb_readonly = config->usbdevice_rdonly;
+        vctrlVSHUpdateConfig(config);
     }
 
     g_VshMenuCtrl = NULL;
-    pspSdkSetK1(k1);
     
-    return ret;
+    return 0;
 }
 
 static SceUID load_satelite(void)
@@ -108,7 +93,7 @@ static SceUID load_satelite(void)
 
     if (modid < 0){
         // try flash0
-        modid = sceKernelLoadModule("flash0:/vsh/module/ark_satelite.prx", 0, &opt);
+        modid = sceKernelLoadModule(VSH_MENU_FLASH, 0, &opt);
     }
 
     return modid;
@@ -163,6 +148,11 @@ int _sceCtrlReadBufferPositive(SceCtrlData *ctrl, int count)
             }
         }
     } else {
+        
+        if ((ctrl->Buttons & FORCE_LOAD) == FORCE_LOAD){
+            goto force_load_satelite;
+        }
+        
         /* filter out fault PSP sending dead keyscan */
         if ((ctrl->Buttons & ALL_CTRL) != PSP_CTRL_SELECT) {
             goto exit;
@@ -215,6 +205,8 @@ int _sceCtrlReadBufferPositive(SceCtrlData *ctrl, int count)
         // Block Satellite Menu in Go!cam [Yoti]
         if (sceKernelFindModuleByName("camera_plugin_module"))
             goto exit;
+
+        force_load_satelite:
 
         #ifdef DEBUG
         printk("%s: loading satelite\n", __func__);

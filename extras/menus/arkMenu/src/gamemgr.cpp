@@ -5,11 +5,13 @@
 #include <unistd.h>
 #include <algorithm>
 #include <stdlib.h>
+#include <systemctrl.h>
 #include "system_mgr.h"
 #include "gamemgr.h"
 #include "music_player.h"
 #include "osk.h"
-#include "pmf.h"
+#include "lang.h"
+#include "texteditor.h"
 
 extern int sctrlKernelMsIsEf();
 
@@ -18,6 +20,11 @@ static GameManager* self = NULL;
 static bool loadingData = false;
 
 ARKConfig* ark_config;
+
+GameManager* GameManager::getInstance(){
+    if (self == NULL) self = new GameManager();
+    return self;
+}
 
 GameManager::GameManager(){
 
@@ -29,7 +36,7 @@ GameManager::GameManager(){
     this->optionsmenu = NULL;
 
     // initialize the categories
-    this->selectedCategory = -2;
+    this->selectedCategory = (common::getConf()->main_menu)? -2 : -1;
     for (int i=0; i<MAX_CATEGORIES; i++){
         this->categories[i] = new Menu((EntryType)i);
     }
@@ -57,7 +64,7 @@ int GameManager::loadIcons(SceSize _args, void *_argp){
         std::vector<Entry*>* game_entries = self->categories[GAME]->getVector();
         bool has_umd = UMD::isUMD();
         bool umd_loaded = game_entries->size() > 0 && string("UMD") == game_entries->at(0)->getType();
-        if (has_umd && !umd_loaded){ // UMD inserted but not loaded
+        if (has_umd && !umd_loaded && self->selectedCategory >= 0){ // UMD inserted but not loaded
             SystemMgr::pauseDraw();
             game_entries->insert(game_entries->begin(), new UMD());
             SystemMgr::resumeDraw();
@@ -154,9 +161,15 @@ void GameManager::findEntries(){
 
     // add recovery menu
     if (common::getConf()->show_recovery){
-        string recovery_path = string(common::getArkConfig()->arkpath) + "RECOVERY.PBP";
+        string recovery_path = string(common::getArkConfig()->arkpath) + ARK_RECOVERY;
+        string recovery_prx = string(common::getArkConfig()->arkpath) + RECOVERY_PRX;
         if (common::fileExists(recovery_path)){
             Eboot* recovery_menu = new Eboot(recovery_path);
+            recovery_menu->setName("Recovery Menu");
+            this->categories[HOMEBREW]->getVector()->insert(this->categories[HOMEBREW]->getVector()->begin(), recovery_menu);
+        }
+        else if (common::fileExists(recovery_prx)){
+            Eboot* recovery_menu = new Eboot(string(common::getArkConfig()->arkpath) + VBOOT_PBP); // fake entry
             recovery_menu->setName("Recovery Menu");
             this->categories[HOMEBREW]->getVector()->insert(this->categories[HOMEBREW]->getVector()->begin(), recovery_menu);
         }
@@ -181,10 +194,15 @@ void GameManager::findEboots(const char* path){
         return;
         
     while ((dit = readdir(dir))){
-		if (strstr(dit->d_name, "%") != NULL) continue;
-        if (strcmp(dit->d_name, ".") == 0) continue;
-        if (strcmp(dit->d_name, "..") == 0) continue;
-        if (!FIO_SO_ISDIR(dit->d_stat.st_attr)) continue;
+		if (strstr(dit->d_name, "%") != NULL) continue; // ignore 1.50 kxploit format
+        if (strcmp(dit->d_name, ".") == 0) continue; // ignore "cur dir"
+        if (strcmp(dit->d_name, "..") == 0) continue; // ignore "parent dir"
+        if (!FIO_SO_ISDIR(dit->d_stat.st_attr)) continue; // ignore files
+        if (dit->d_name[0] == '.' && !common::getConf()->show_hidden) continue; // ignore hidden?
+        if (strcmp(dit->d_name, "NPUZ01234") == 0
+            || strcmp(dit->d_name, "SCPS10084") == 0
+            || strcmp(dit->d_name, "ARK_Loader") == 0)
+            continue; // ignore ARK launchers
         
         string fullpath = Eboot::fullEbootPath(path, dit->d_name);
         if (fullpath == ""){
@@ -216,15 +234,17 @@ void GameManager::findISOs(const char* path){
     pri_dirent->size = sizeof(pspMsPrivateDirent);
     entry.d_private = (void*)pri_dirent;
 
-    if (dir == NULL)
+    if (dir < 0)
         return;
         
     while (sceIoDread(dir, dit) > 0){
 
         if (strcmp(dit->d_name, ".") == 0) continue;
         if (strcmp(dit->d_name, "..") == 0) continue;
+        if (dit->d_name[0] == '.' && !common::getConf()->show_hidden) continue;
 
         string fullpath = string(path)+string(dit->d_name);
+        string shortpath = string(path) + string((const char*)pri_dirent);
 
         if (FIO_SO_ISDIR(dit->d_stat.st_attr)){
             if (common::getConf()->scan_cat && string(dit->d_name) != string("VIDEO")){
@@ -232,10 +252,8 @@ void GameManager::findISOs(const char* path){
             }
             continue;
         }
-        else if (!common::fileExists(fullpath)){
-            fullpath = string(path) + string(dit->d_name).substr(0, 4) + string(pri_dirent->s_name);
-        }
         if (Iso::isISO(fullpath.c_str())) this->categories[GAME]->addEntry(new Iso(fullpath));
+        else if (Iso::isISO(shortpath.c_str())) this->categories[GAME]->addEntry(new Iso(shortpath));
     }
     sceIoDclose(dir);
     free(pri_dirent);
@@ -357,7 +375,13 @@ void GameManager::stopFastScroll(){
 }
 
 string GameManager::getInfo(){
-    if (selectedCategory >= 0) return getEntry()->getName();
+    if (selectedCategory >= 0){
+        Entry* e = getEntry();
+        if (common::getConf()->show_path){
+            return e->getName() + " <" + e->getPath() + ">"; 
+        }
+        return e->getName();
+    }
     else if (selectedCategory == -1) return "Loading games...";
     else if (selectedCategory == -2) return "No games available";
     return "Unknown Menu State";
@@ -384,44 +408,6 @@ void GameManager::draw(){
             angle
         );
         angle+=0.2;
-    }
-}
-
-void GameManager::animAppear(){
-    for (int i=480; i>=0; i-=40){
-        common::clearScreen(CLEAR_COLOR);
-        common::drawScreen();
-        this->draw();
-        Image* pic1 = this->getEntry()->getPic1();
-        if (pic1 != NULL){
-            if (pic1->getWidth() == 480 && pic1->getHeight() == 272)
-                pic1->draw(i, 0);
-            else
-                pic1->draw_scale(i, 0, 480, 272);
-        }
-        Image* pic0 = this->getEntry()->getPic0();
-        if (pic0 != NULL) pic0->draw(i+160, 85);
-        this->getEntry()->getIcon()->draw(i+10, 98);
-        common::flipScreen();
-    }
-}
-
-void GameManager::animDisappear(){
-    for (int i=0; i<=480; i+=40){
-        common::clearScreen(CLEAR_COLOR);
-        common::drawScreen();
-        this->draw();
-        Image* pic1 = this->getEntry()->getPic1();
-        if (pic1 != NULL){
-            if (pic1->getWidth() == 480 && pic1->getHeight() == 272)
-                pic1->draw(i, 0);
-            else
-                pic1->draw_scale(i, 0, 480, 272);
-        }
-        Image* pic0 = this->getEntry()->getPic0();
-        if (pic0 != NULL) pic0->draw(i+160, 85);
-        this->getEntry()->getIcon()->draw(i+10, 98);
-        common::flipScreen();
     }
 }
 
@@ -486,6 +472,9 @@ void GameManager::updateGameList(const char* path){
         }
         SystemMgr::pauseDraw();
         self->selectedCategory = -1;
+        for (int i=0; i<MAX_CATEGORIES; i++){
+            self->categories[i]->clearEntries();
+        }
         SystemMgr::resumeDraw();
         if (icon_status == ICONS_LOADING){
             self->resumeIcons();
@@ -501,82 +490,14 @@ void GameManager::execApp(){
 
     loadingData = true;
     this->waitIconsLoad();
-    this->getEntry()->getTempData1();
+    this->getEntry()->loadPics();
     loadingData = false;
-    if (this->pmfPrompt()){
+    if (this->getEntry()->pmfPrompt()){
         this->endAllThreads();
         this->getEntry()->execute();
     }
     this->getEntry()->freeTempData();
     sceKernelDelayThread(0);
-}
-
-static int loading_data;
-
-int load_thread(int argc, void* argp){
-    Entry* e = (Entry*)(*(void**)argp);
-    e->getTempData2();
-    loading_data = false;
-    sceKernelExitDeleteThread(0);
-    return 0;
-}
-
-bool GameManager::pmfPrompt(){
-
-    bool ret;
-    
-    SystemMgr::pauseDraw();
-    
-    animAppear();
-    
-    Entry* entry = this->getEntry();
-
-    loading_data = true;
-
-    int thd = sceKernelCreateThread("gamedata_thread", (SceKernelThreadEntry)&load_thread, 0x10, 0x10000, PSP_THREAD_ATTR_USER|PSP_THREAD_ATTR_VFPU, NULL);
-    sceKernelStartThread(thd, sizeof(entry), &entry);
-
-    float angle = 1.0;
-    Image* img = common::getImage(IMAGE_WAITICON);
-    while (loading_data){
-        common::clearScreen(CLEAR_COLOR);
-        entry->drawBG();
-        entry->getIcon()->draw(10, 98);
-        img->draw_rotate((480-img->getWidth())/2, (272-img->getHeight())/2, angle);
-        angle+=0.2;
-        common::flipScreen();
-    }
-    
-    bool pmfPlayback = entry->getIcon1() != NULL || entry->getSnd() != NULL;
-        
-    if (pmfPlayback && !MusicPlayer::isPlaying()){
-        ret = pmfStart(entry, 10, 98);
-    }
-    else{
-        Controller control;
-    
-        while (true){
-            common::clearScreen(CLEAR_COLOR);
-            entry->drawBG();
-            entry->getIcon()->draw(10, 98);
-            common::flipScreen();
-            control.update(1);
-            if (control.accept()){
-                ret = true;
-                break;
-            }
-            else if (control.decline()){
-                ret = false;
-                break;
-            }
-        }
-    }
-    if (!ret){
-        common::playMenuSound();
-        animDisappear();
-    }
-    SystemMgr::resumeDraw();
-    return ret;
 }
 
 void GameManager::gameOptionsMenu(){
@@ -593,30 +514,42 @@ void GameManager::gameOptionsMenu(){
     delete aux;
 
     switch (ret){
+
     case 0:{
         // create a new options menu but each entry is some info about the game
         Entry* e = this->getEntry();
         string path = e->getPath();
-        if (e->getType() == "EBOOT"){
+        if (e->getType() == string("EBOOT")){
             path = path.substr(0, path.rfind('/')+1);
         }
         SfoInfo info = e->getSfoInfo();
-        string fullname = string("Name - ") + string(info.title);
-        string gameid = string("Game ID - ") + string(info.gameid);
-        string fullpath = "Path - " + e->getPath();
-        string size = "Size - " + common::beautifySize(Browser::recursiveSize(path));
+        string game_info[] = {
+            info.title,
+            info.gameid,
+            e->getPath(),
+            common::beautifySize(Browser::recursiveSize(path))
+        };
+        string fullname = TR("Name") + " - " + game_info[0];
+        string gameid = TR("Game ID") + " - " + game_info[1];
+        string fullpath = TR("Path") + " - " + game_info[2];
+        string size = TR("Size") + " - " + game_info[3];
         t_options_entry gameinfo_entries[] = {
+            {-1, "Cancel"},
             {0, (char*)fullname.c_str()},
             {1, (char*)gameid.c_str()},
-            {2, (char*)size.c_str()},
-            {3, (char*)fullpath.c_str()}
+            {3, (char*)size.c_str()},
+            {2, (char*)fullpath.c_str()},
         };
         optionsmenu = new OptionsMenu("Game Info", sizeof(gameinfo_entries)/sizeof(t_options_entry), gameinfo_entries);
-        optionsmenu->control();
+        int res = optionsmenu->control();
         OptionsMenu* aux = optionsmenu;
         optionsmenu = NULL;
         delete aux;
+        if (res >= 0){
+            TextEditor::clipboard = game_info[res];
+        }
     } break;
+
     case 1:{
         // rename the ISO or Eboot folder name
         SystemMgr::pauseDraw();
@@ -645,9 +578,22 @@ void GameManager::gameOptionsMenu(){
         osk.end();
         SystemMgr::resumeDraw();
     } break;
+
     case 2:{
         // remove current entry from list (adjusting index and selectedCategory accordingly), delete file or folder depending on ISO/EBOOT
         // make checks to prevent deleting stuff like "UMD Drive" and "Recovery" entries
+        t_options_entry opts[] = {
+            {OPTIONS_CANCELLED, "Cancel"},
+            {0, "Confirm"},
+        };
+        optionsmenu = new OptionsMenu("Confirm Deletion?", sizeof(opts)/sizeof(t_options_entry), opts);
+        int pret = optionsmenu->control();
+        OptionsMenu* aux = optionsmenu;
+        optionsmenu = NULL;
+        delete aux;
+
+        if (pret == OPTIONS_CANCELLED) return;
+
         Entry* e = this->getEntry();
         string name = e->getName();
         if (name != "UMD Drive" && name != "Recovery Menu"){
@@ -672,10 +618,10 @@ void GameManager::gameOptionsMenu(){
             SystemMgr::resumeDraw();
 
             // delete file/folder
-            if (e->getType() == "ISO"){
+            if (e->getType() == string("ISO")){
                 sceIoRemove(e->getPath().c_str());
             }
-            else if (e->getType() == "EBOOT"){
+            else if (e->getType() == string("EBOOT")){
                 string path = e->getPath();
                 if (strstr(path.c_str(), "/PSP/SAVEDATA/") != NULL){
                     // remove eboot only
@@ -699,17 +645,18 @@ void GameManager::gameOptionsMenu(){
             delete e;
         }
     }break;
+
     default: break;
     }
 }
 
 void GameManager::startBoot(){
     switch (common::getConf()->startbtn){
-    case 1: { // Default Start Button (Current)
+    case 0: { // Default Start Button (Current)
         this->endAllThreads();
         this->getEntry()->execute();
     } break;
-    case 2: { // Last game
+    case 1: { // Last game
         const char* last_game = common::getConf()->last_game;
         if (Eboot::isEboot(last_game)){
             this->endAllThreads();
@@ -722,10 +669,9 @@ void GameManager::startBoot(){
             iso->execute();
         }
     } break;
-    case 3: { // Random ISO
+    case 2: { // Random ISO
         if (this->categories[GAME]->getVectorSize() > 0){
             this->endAllThreads();
-            srand(time(NULL));
             int rand_idx = rand() % this->categories[GAME]->getVectorSize();
             Entry* e = this->categories[GAME]->getEntry(rand_idx);
             e->execute();

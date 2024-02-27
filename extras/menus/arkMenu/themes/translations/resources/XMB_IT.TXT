@@ -1,0 +1,25 @@
+Aggiornamento ARK-4
+Configurazione custom firmware
+Gestione plugin
+Avvio personalizzato
+Ricarica USB
+Overclock
+Risparmio energetico
+Modalità energetica bilanciata
+Avvio automatico launcher
+Disattiva funzione pausa su PSP Go
+Forza memoria Extra
+Velocizza Memory Stick
+Cache Inferno
+Correggi incompatibilità plugin su PSP Go
+Salta loghi Sony
+Nascondi PIC0 e PIC1
+Previeni cancellazione dell'ibernazione su PSP Go
+Nascondi l'indirizzo MAC
+Nascondi DLC
+Disattiva LEDs
+Disabilitare l'unità UMD
+Disabilitare la levetta analogica
+Flag del QA
+Applicazione personalizzata
+PSP Overclock

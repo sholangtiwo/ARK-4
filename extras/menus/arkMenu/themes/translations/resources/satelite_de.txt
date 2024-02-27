@@ -1,0 +1,88 @@
+Standard
+Japan
+USA
+Europa
+Korea
+Gro·britannien
+SÅdamerika
+Australien
+Hong Kong
+Taiwan
+Russland
+China
+Debugmodus I
+Debugmodus II
+Deaktiviert
+Aktiviert
+Normal
+éndern
+X -> O
+O -> X
+USB-VERBINDUNG
+USB READ-ONLY
+ISO VIDEO MOUNT
+VORDERGRUND
+HINTERGRUND
+SCHRIFTART
+MENöGESTALTUNG
+HAUPTMENö
+BATTERIE KONV.
+X/O TAUSCHEN
+UMD-REGION
+VSH-REGION
+IMPORTIERE KLASSISCHE PLUGINS
+AKTIVIERE FLASH UND WMA
+PAUSIERUNG LôSCHEN
+ZUFéLLIGE ISO STARTEN
+ZURöCK
+KEINE PAUSEFUNKTION
+Normal -> Pandora
+Pandora -> Normal
+VSH MENö
+ERWEITERTES VSH MENö
+RECOVERY MENö ->
+GERéT AUSSCHALTEN
+STANDBY-MODUS
+GERéT NEUSTARTEN
+VSH NEUSTARTEN
+BEENDEN
+Nicht unterstÅtzt
+Adrenaline-USB
+Flash
+UMD Disk
+Interner Speicher
+Memory Stick
+Keine
+Klassisch
+Einfach
+Erweitertes
+Neu
+Zufall
+Rot
+Hellrot
+Orange
+Hellorange
+Gelb
+Hellgelb
+GrÅn
+HellgrÅn
+Blau
+Hellblau
+Indigo
+Hellindigo
+Violett
+Hellviolett
+Rosa
+Hellrosa
+Lila
+Helllila
+TÅrkis
+HelltÅrkis
+Aqua
+Hellaqua
+Grau
+Hellgrau
+Schwarz
+Hellschwarz
+Wei·
+Hellwei·

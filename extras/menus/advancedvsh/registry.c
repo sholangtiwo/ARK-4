@@ -15,10 +15,8 @@
  * along with PRO CFW. If not, see <http://www.gnu.org/licenses/ .
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
+#include "registry.h"
+
 #include <pspsdk.h>
 #include <pspdebug.h>
 #include <pspkernel.h>
@@ -27,80 +25,57 @@
 #include <psputility.h>
 #include <pspreg.h>
 
-#include "systemctrl.h"
-#include "systemctrl_se.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <systemctrl.h>
+#include <systemctrl_se.h>
 #include "vpl.h"
+#include "scepaf.h"
 
-int get_registry_value(const char *dir, const char *name, u32 *val)
-{
-    int ret = 0;
-    struct RegParam reg;
-    REGHANDLE h;
-
-    memset(&reg, 0, sizeof(reg));
-    reg.regtype = 1;
-    reg.namelen = strlen("/system");
-    reg.unk2 = 1;
-    reg.unk3 = 1;
-    strcpy(reg.name, "/system");
-    if(sceRegOpenRegistry(&reg, 2, &h) == 0)
-    {
-        REGHANDLE hd;
-        if(!sceRegOpenCategory(h, dir, 2, &hd))
-        {
-            REGHANDLE hk;
-            unsigned int type, size;
-
-            if(!sceRegGetKeyInfo(hd, name, &hk, &type, &size))
-            {
-                if(!sceRegGetKeyValue(hd, hk, val, 4))
-                {
-                    ret = 1;
-                    sceRegFlushCategory(hd);
-                }
-            }
-            sceRegCloseCategory(hd);
-        }
-        sceRegFlushRegistry(h);
-        sceRegCloseRegistry(h);
-    }
-    return ret;
+void delete_hibernation(vsh_Menu *vsh) {
+	if (vsh->psp_model == PSP_GO) {
+		vshCtrlDeleteHibernation();
+		vsh->status.reset_vsh = 1;
+	}
 }
 
-int set_registry_value(const char *dir, const char *name, u32 val)
-{
-    int ret = 0;
-    struct RegParam reg;
-    REGHANDLE h;
+int codecs_activated() {
+	u32 flash_activated = 0;
+	u32 flash_play = 0;
+	u32 wma_play = 0;
 
-    memset(&reg, 0, sizeof(reg));
-    reg.regtype = 1;
-    reg.namelen = strlen("/system");
-    reg.unk2 = 1;
-    reg.unk3 = 1;
-    strcpy(reg.name, "/system");
-    if(sceRegOpenRegistry(&reg, 2, &h) == 0)
-    {
-        REGHANDLE hd;
-        if(!sceRegOpenCategory(h, dir, 2, &hd))
-        {
-            if(!sceRegSetKeyValue(hd, name, &val, 4))
-            {
-                ret = 1;
-                sceRegFlushCategory(hd);
-            }
-			else
-			{
-				sceRegCreateKey(hd, name, REG_TYPE_INT, 4);
-				sceRegSetKeyValue(hd, name, &val, 4);
-				ret = 1;
-                sceRegFlushCategory(hd);
-			}
-            sceRegCloseCategory(hd);
-        }
-        sceRegFlushRegistry(h);
-        sceRegCloseRegistry(h);
-    }
+	vctrlGetRegistryValue("/CONFIG/BROWSER", "flash_activated", &flash_activated);
+	vctrlGetRegistryValue("/CONFIG/BROWSER", "flash_play", &flash_play);
+	vctrlGetRegistryValue("/CONFIG/MUSIC", "wma_play", &wma_play);
 
-	return ret;
+	if (!flash_activated || !flash_play || !wma_play){
+		return 0;
+	}
+	
+	return 1;
+}
+
+int activate_codecs(vsh_Menu *vsh) {
+
+	if (!codecs_activated()){
+		vctrlSetRegistryValue("/CONFIG/BROWSER", "flash_activated", 1);
+		vctrlSetRegistryValue("/CONFIG/BROWSER", "flash_play", 1);
+		vctrlSetRegistryValue("/CONFIG/MUSIC", "wma_play", 1);
+		vsh->status.reset_vsh = 1;
+	}
+	
+	return 0;
+}
+
+int swap_buttons(vsh_Menu *vsh) {
+	u32 value;
+	vctrlGetRegistryValue("/CONFIG/SYSTEM/XMB", "button_assign", &value);
+	value = !value;
+	vctrlSetRegistryValue("/CONFIG/SYSTEM/XMB", "button_assign", value);
+	
+	vsh->status.reset_vsh = 1;
+	return 0;
 }

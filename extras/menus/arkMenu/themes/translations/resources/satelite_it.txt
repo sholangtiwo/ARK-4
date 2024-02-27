@@ -1,0 +1,88 @@
+Predefinito
+Giappone
+America
+Europa
+Corea
+Regno Unito
+America Latina
+Australia
+Hong Kong
+Taiwan
+Russia
+Cina
+Debug I
+Debug II
+Disabilitato
+Abilitato
+Normale
+Modifica
+X -> O
+O -> X
+DISPOSITIVO USB
+PROTEGGI USB
+ISO VIDEO
+COLORE CARATTERI
+COLORE SFONDO
+CARATTERE
+PROGETTAZIONE
+MENU PRINCIPALE
+MOD BATTERIA
+MODIFICA X/O
+REGIONE VSH
+REGIONE UMD
+IMPORTA PLUGINS CLASSICI
+ATTIVA FLASH E WMA
+ELIMINA IBERNAZIONE
+AVVIA ISO CASUALE
+INDIETRO
+IBERNAZIONE NON SUPPORTATA
+Normale -> Pandora
+Pandora -> Normale
+MENU VSH
+MENU VSH AVANZATO
+RECOVERY MENU ->
+SPEGNI CONSOLE
+SOSPENDI
+RIAVVIA CONSOLE
+RIAVVIA VSH
+ESCI
+Non Supportato
+USB di Adrenaline
+Flash
+Disco UMD
+Memoria Interna
+Memory Stick
+Nessuno
+Classico
+Simple
+Avanzato
+Nuovo
+Casuale
+Rosso
+Rosso Chiaro
+Arancia
+Arancia Chiaro
+Giallo
+Giallo Chiaro
+Verde
+Verde Chiaro
+Blu
+Blu Chiaro
+Indaco
+Indaco Chiaro
+Viola
+Viola Chiaro
+Rossa
+Rossa Chiaro
+Viola Forte
+Viola Forte Chiaro
+Verde Acqua
+Verde Acqua Chiaro
+Acqua
+Acqua Chiaro
+Grigio
+Grigio Chiaro
+Nero
+Nero Chiaro
+Bianco
+Bianco Chiaro
